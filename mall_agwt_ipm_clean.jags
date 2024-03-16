@@ -1,0 +1,273 @@
+
+    model {
+    #############################
+    #### Band-recovery model ####
+    #############################
+# Model code adapted from Devers et al. (2021)
+## Priors for survival rate components
+# Priors for age*sex (cohort) component
+
+# Mean hunting survival (overall intercept)
+
+	for(t in 1:(nyrs-1)){		
+		muN.am[t] ~ dnorm(0, 1.51) #dnorm(mean.PH.am, tau.PH.am) 
+		muN.af[t] ~ dnorm(0, 1.51) #dnorm(mean.PH.af, tau.PH.af) 
+		muN.jm[t] ~ dnorm(0, 1.51) #dnorm(mean.PH.jm, tau.PH.jm) 
+		muN.jf[t] ~ dnorm(0, 1.51) #dnorm(mean.PH.jm, tau.PH.jm)
+		#muH[1:4,t] ~ dmnorm(mean.IntH[1:4], Omega[,]) #dnorm(0, 1.51)
+		#muH[1:4,t] ~ dmnorm(mean.IntH[1:4], Omega[,])#dnorm(mean.PH.jf, tau.PH.jf) #dnorm(0, 1.51)
+		#muH[1:4,t] ~ dmnorm(mean.IntH[1:4], Omega[,])
+		muH.am[t] ~ dnorm(0, 1.51) #dnorm(mean.H.am,tau.H.am) # hieararchical prior for random effects centered on overall intercept
+		muH.af[t] ~ dnorm(0, 1.51) #dnorm(mean.H.af,tau.H.af)
+		muH.jm[t] ~ dnorm(0, 1.51) #dnorm(mean.H.jm,tau.H.jm)
+		muH.jf[t] ~ dnorm(0, 1.51) #dnorm(mean.H.jf,tau.H.jf)
+
+	}
+
+	# Priors for recovery rates
+	for(t in 1:nyrs){
+		f.am[t] ~ dbeta(1,1)
+		f.af[t] ~ dbeta(1,1)
+		f.jm[t] ~ dbeta(1,1)
+		f.jf[t] ~ dbeta(1,1)
+	}
+
+# Priors for prcp paramater
+for(i in 1:4){
+
+alpha_prcp[i] ~ dnorm(0, 0.37)#dnorm(0, 0.37)
+alpha_dx32[i] ~ dnorm(0, 0.37)#dnorm(0, 0.37)
+gamma_prcp[i] ~ dnorm(0, 0.37)#dnorm(0, 0.37)
+gamma_dx32[i] ~ dnorm(0, 0.37)#dnorm(0, 0.37)
+}
+
+# Create species-, cohort-, and year-specific survival probabilities
+	for(t in 1:(nyrs-1)){
+		logit(SH.am[t]) <- muH.am[t] + alpha_prcp[1]*prcp[t] + alpha_dx32[1]*dx32[t]
+		logit(SN.am[t]) <- muN.am[t] + gamma_prcp[1]*prcp[t] + gamma_dx32[1]*dx32[t] 
+		logit(SH.af[t]) <- muH.af[t] + alpha_prcp[2]*prcp[t] + alpha_dx32[2]*dx32[t] 
+		logit(SN.af[t]) <- muN.af[t] + gamma_prcp[2]*prcp[t] + gamma_dx32[2]*dx32[t] 
+		logit(SH.jm[t]) <- muH.jm[t] + alpha_prcp[3]*prcp[t] + alpha_dx32[3]*dx32[t] 
+		logit(SN.jm[t]) <- muN.jm[t] + gamma_prcp[3]*prcp[t] + gamma_dx32[3]*dx32[t] 
+		logit(SH.jf[t]) <- muH.jf[t] + alpha_prcp[4]*prcp[t] + alpha_dx32[4]*dx32[t] 
+		logit(SN.jf[t]) <- muN.jf[t] + gamma_prcp[4]*prcp[t] + gamma_dx32[4]*dx32[t]
+	}
+
+##### PRE-SEASON BANDED BIRDS
+	##### Cell Probabilities: Adult Preseason- Banded Birds
+		# Diagonals
+		for(t in 1:(nyrs-1)){
+			recoveries.am[t,t] <- f.am[t]
+			recoveries.af[t,t] <- f.af[t]
+			for(j in (t+1):nyrs){
+				recoveries.am[t,j] <- f.am[j]*prod(SH.am[t:(j-1)])*prod(SN.am[t:(j-1)])
+				recoveries.af[t,j] <- f.af[j]*prod(SH.af[t:(j-1)])*prod(SN.af[t:(j-1)])
+				recoveries.am[j,t] <- 0
+				recoveries.af[j,t] <- 0
+			}
+		}
+		recoveries.am[nyrs,nyrs] <- f.am[nyrs]
+		recoveries.af[nyrs,nyrs] <- f.af[nyrs]
+		# Not recovered
+		for(t in 1:nyrs){
+			recoveries.am[t,(nyrs+1)] <- 1 - sum(recoveries.am[t,1:nyrs])
+			recoveries.af[t,(nyrs+1)] <- 1 - sum(recoveries.af[t,1:nyrs])
+		}
+
+	##### Likelihood
+		for(t in 1:nyrs){
+			recovmat.am[t,1:(nyrs+1)] ~ dmulti(recoveries.am[t,1:(nyrs+1)], relmat.am[t])
+			recovmat.af[t,1:(nyrs+1)] ~ dmulti(recoveries.af[t,1:(nyrs+1)], relmat.af[t])
+		}
+
+	#-----------------------------------------------------------------------------------
+	##### Cell Probabilities: Juvenile Preseason- Banded Birds
+		# Diagonals
+		for(t in 1:nyrs){
+			recoveries.jm[t,t] <- f.jm[t]
+			recoveries.jf[t,t] <- f.jf[t]
+		}
+		# First off diagonal
+		for(t in 1:(nyrs-1)){
+			recoveries.jm[t,(t+1)] <- f.am[(t+1)]*SH.jm[t]*SN.jm[t]
+			recoveries.jf[t,(t+1)] <- f.af[(t+1)]*SH.jf[t]*SN.jf[t]
+		}
+		# Rest
+		for(t in 1:(nyrs-2)){
+			for(j in (t+2):nyrs){
+				recoveries.jm[t,j] <- f.am[j]*SH.jm[t]*SN.jm[t]*prod(SH.am[(t+1):(j-1)])*prod(SN.am[(t+1):(j-1)])
+				recoveries.jf[t,j] <- f.af[j]*SH.jf[t]*SN.jf[t]*prod(SH.af[(t+1):(j-1)])*prod(SN.af[(t+1):(j-1)])
+			}
+		}
+		# Lower triangular is all zeros
+		for(t in 1:(nyrs-1)){
+			for(j in (t+1):nyrs){
+				recoveries.jm[j,t] <- 0
+				recoveries.jf[j,t] <- 0
+			}
+		}
+		# Not recovered
+		for(t in 1:nyrs){
+			recoveries.jm[t,(nyrs+1)] <- 1 - sum(recoveries.jm[t,1:nyrs])
+			recoveries.jf[t,(nyrs+1)] <- 1 - sum(recoveries.jf[t,1:nyrs])
+		}
+
+	##### Likelihood
+		for(t in 1:nyrs){
+			recovmat.jm[t,1:(nyrs+1)] ~ dmulti(recoveries.jm[t,1:(nyrs+1)], relmat.jm[t])
+			recovmat.jf[t,1:(nyrs+1)] ~ dmulti(recoveries.jf[t,1:(nyrs+1)], relmat.jf[t])
+		}
+
+##### POST-SEASON BANDED BIRDS
+	##### Cell Probabilities
+		# Diagonals
+		for(t in 1:(nyrs-2)){
+			recoveriesP.am[t,t] <- f.am[(t+1)]*SN.am[t]
+			recoveriesP.af[t,t] <- f.af[(t+1)]*SN.af[t]
+			for(j in (t+1):(nyrs-1)){
+				recoveriesP.am[t,j] <- f.am[(j+1)]*prod(SN.am[t:j])*prod(SH.am[(t+1):j])
+				recoveriesP.af[t,j] <- f.af[(j+1)]*prod(SN.af[t:j])*prod(SH.af[(t+1):j])
+				recoveriesP.am[j,t] <- 0
+				recoveriesP.af[j,t] <- 0
+			}
+		}
+		recoveriesP.am[(nyrs-1),(nyrs-1)] <- f.am[nyrs]*SN.am[(nyrs-1)]
+		recoveriesP.af[(nyrs-1),(nyrs-1)] <- f.af[nyrs]*SN.af[(nyrs-1)]
+
+		# Not recovered
+		for(t in 1:(nyrs-1)){
+			recoveriesP.am[t,(nyrs)] <- 1 - sum(recoveriesP.am[t,1:(nyrs-1)])
+			recoveriesP.af[t,(nyrs)] <- 1 - sum(recoveriesP.af[t,1:(nyrs-1)])
+		}
+
+	##### Likelihood
+		for(t in 1:(nyrs-1)){
+			recovmatP.am[t,1:nyrs] ~ dmulti(recoveriesP.am[t,1:nyrs], relmatP.am[t])
+			recovmatP.af[t,1:nyrs] ~ dmulti(recoveriesP.af[t,1:nyrs], relmatP.af[t])
+		}
+	#-----------------------------------------------------------------------------------
+	##### Cell Probabilities: Juvenile Postseason- Banded Birds
+		# Diagonals
+		for(t in 1:(nyrs-1)){
+			recoveriesP.jm[t,t] <- f.am[(t+1)]*SN.jm[t]
+			recoveriesP.jf[t,t] <- f.af[(t+1)]*SN.jf[t]
+		}
+		# First off diagonal
+		for(t in 1:(nyrs-2)){
+			for(j in (t+1):(nyrs-1)){
+				recoveriesP.jm[t,j] <- f.am[(j+1)]*SN.jm[t]*prod(SH.am[(t+1):j])*prod(SN.am[(t+1):j])
+				recoveriesP.jf[t,j] <- f.af[(j+1)]*SN.jf[t]*prod(SH.af[(t+1):j])*prod(SN.af[(t+1):j])
+				recoveriesP.jm[j,t] <- 0
+				recoveriesP.jf[j,t] <- 0
+
+			}
+		}
+		# Not recovered
+		for(t in 1:(nyrs-1)){
+			recoveriesP.jm[t,nyrs] <- 1 - sum(recoveriesP.jm[t,1:(nyrs-1)])
+			recoveriesP.jf[t,nyrs] <- 1 - sum(recoveriesP.jf[t,1:(nyrs-1)])
+		}
+
+	##### Likelihood
+		for(t in 1:(nyrs-1)){
+			recovmatP.jm[t,1:nyrs] ~ dmulti(recoveriesP.jm[t,1:nyrs], relmatP.jm[t])
+			recovmatP.jf[t,1:nyrs] ~ dmulti(recoveriesP.jf[t,1:nyrs], relmatP.jf[t])
+		}
+	#### ANNUAL SURVIVAL ESTIMATE
+		for(t in 1:(nyrs-1)){
+			S.am[t]<-SH.am[t] * SN.am[t]
+			S.af[t]<-SH.af[t] * SN.af[t]
+			S.jm[t]<-SH.jm[t] * SN.jm[t]
+			S.jf[t]<-SH.jf[t] * SN.jf[t]
+		}
+
+
+########################################
+#### Productivity (age-ratio) model ####
+########################################
+#Priors
+
+tau.R <- pow(sd.R, -2)
+sd.R ~ dunif(0, 1)
+beta ~ dnorm(0, 1)
+beta_pond ~ dnorm(0, 0.01)
+beta_prcp ~ dnorm(0, 0.01)
+beta_dx32 ~ dnorm(0, 0.01)
+
+# priors for missing pond count in 2020
+ponds[16] ~ dnorm(0, 1) # for mallard
+# ponds[29] ~ dnorm(0, 1) # for agwt
+
+# Likelihood
+  for (t in 1:nyrs){
+  #true fall age ratio
+	mu.R[t] <- beta
+	esp[t] ~ dnorm(mu.R[t], tau.R)
+	log(R[t]) <- esp[t] + beta_pond*ponds[t] + beta_prcp*prev.prcp[t] + beta_dx32*prev.dx32[t] #+ beta_nao*prev.nao[t]
+	v[t] <- f.jf[t]/f.af[t] # differential vulnerability
+	q[t] <- R[t]*v[t]/(1 + R[t]*v[t])
+	W.jv[t] ~ dbinom(q[t], W.tot[t])	##Likelihood for q
+    } # t
+
+################################
+#### Population count model ####
+################################
+
+# Priors
+    # sig.t ~ dgamma(3.5,0.05) #agwt
+    sig.t ~ dgamma(15, 0.1) #mall
+    sig2.t <- pow(sig.t, 2)
+    tau.t <- pow(sig.t, -2)
+    delta ~ dgamma(4, 0.1) #agwt
+
+    # initial population size (tsa = traditional survey area, esa = eastern survey area)
+    ##### initial population for MALL
+    n_HY_fem ~ dnorm(700*0.4*0.45,0.0005)I(0,) #juvenile female
+    n_HY_mal ~ dnorm(700*0.4*0.55,0.0005)I(0,)  #juvenile male
+    n_AHY_fem ~  dnorm(700*0.6*0.27,0.0005)I(0,) #adult female
+    n_AHY_mal ~ dnorm(700*0.6*0.73,0.0005)I(0,) #adult male
+    ##### initial population for AGWT
+    #n_HY_fem ~ dnorm(50, 0.0016)I(0,) #juvenile female
+    #n_HY_mal ~  dnorm(50, 0.0016)I(0,) #juvenile male
+    #n_AHY_fem ~ dnorm(50, 0.0016)I(0,) #adult female
+    #n_AHY_mal ~ dnorm(50, 0.0016)I(0,) #adult male
+
+    N_HY_fem[1] <- round(n_HY_fem)
+    N_AHY_fem[1] <- round(n_AHY_fem)
+    N_HY_mal[1] <- round(n_HY_mal)
+    N_AHY_mal[1] <- round(n_AHY_mal)
+
+    # Likelihood
+    # state process
+    for(t in 2:nyrs){
+    # Popluation size during summer (Bpop survey)
+    N_HY_mal[t] <- (N_HY_fem[t-1] + N_AHY_fem[t-1])*R[t-1]*SH.jm[t-1]*(SN.jm[t-1]^0.25)
+    N_HY_fem[t] <- (N_HY_fem[t-1] + N_AHY_fem[t-1])*R[t-1]*SH.jf[t-1]*(SN.jf[t-1]^0.25)
+
+    N_AHY_mal[t] <- (N_HY_mal[t-1] + N_AHY_mal[t-1])*S.am[t-1] 
+    N_AHY_fem[t] <- (N_HY_fem[t-1] + N_AHY_fem[t-1])*S.af[t-1] 
+
+    }
+
+
+
+     for(t in  1:nyrs) {
+     # Total population size
+     N_tot[t] <- N_HY_fem[t] + N_HY_mal[t] + N_AHY_fem[t] + N_AHY_mal[t]
+
+     }
+     for(t in  1:(nyrs-1)) {
+     lambda[t] <- N_tot[t+1]/N_tot[t]
+	}
+
+    # Observation process
+     # for(t in 1:(begin.esa.year-1)){ # Comment this for loop if running mallard model
+     # y_t[t] ~ dnorm(N_tot[t] + delta, tau.t)
+     # }
+    # for(t in begin.esa.year:nyrs){ # Comment this out if running mallard model
+    for(t in 1:nyrs){ # Comment this out if running agwt model
+    y_t[t] ~ dnorm(N_tot[t], tau.t)
+    }
+
+    } # end model
+    

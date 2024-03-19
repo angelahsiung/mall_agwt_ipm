@@ -4,8 +4,8 @@ new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"
 if(length(new.packages)){install.packages(new.packages)}
 lapply(list.of.packages, require, character.only = TRUE)
 
-# Load and prepare data 
-# # Band-recovery marrays
+#------ Load and prepare data -----------
+## Band-recovery marrays
 
 # Mallard
 MALL.marray <- readRDS('data/MALL_marray_new.rda')
@@ -75,13 +75,12 @@ ponds <- ponds[14:length(ponds)]
 
 ponds.std <- (ponds-mean(ponds))/sd(ponds) # standardize
 
-
+#------ Running IPM ----------
 # Bundle data
 nyrs <- dim(MALL.marray)[1]
 nClass <- dim(MALL.marray)[4]
 # nyrs <- dim(AGWT.marray)[1]
 # nClass <- dim(AGWT.marray)[4]
-year <- (1:nyrs-nyrs/2)
 
 bugs.data <- list(nyrs=dim(MALL.marray)[1], 
                   #pre-hunting band-recoveries (2005-2020)
@@ -148,7 +147,6 @@ parameters <- c("SH.am", "SN.am", "SH.af", "SN.af", "SH.jm", "SN.jm", "SH.jf", "
                 ,"beta_pond", "beta_prcp", "beta_dx32"
 )
 
-
 # MCMC settings
 ni <- 300
 nt <- 1
@@ -182,8 +180,8 @@ agwt.ipm <- jagsUI(bugs.data, inits=inits, parameters, "mall_agwt_ipm_clean.jags
 # 
 # grab(mall.ipm.cov, "lambda")
 
-## plotting results
-# # Load model output (if needed)
+#------Plotting model results--------
+## Load model output (if needed)
 mall.ipm <- readRDS("output/mall_ipm_2005-2020_output.rda")
 agwt.ipm <- readRDS("output/agwt_ipm_1992_2020_output.rda")
 
@@ -420,18 +418,9 @@ R.mall.plot / R.agwt.plot + plot_layout(guides = "collect", widths = 1, heights 
 ggsave("figures/age_ratio_new_both.jpg", units="cm", width=8, height=7, dpi=600)
 
 # vulnerability
-
 v.out <- data.frame(cbind(Year = 1992:2020, Species = c(rep(c("Mallard", "Green-winged Teal"), each = length(agwt.ipm$mean$v))), v.mean = c(rep(NA, 13), mall.ipm$mean$v, agwt.ipm$mean$v), v.lower = c(rep(NA, 13), mall.ipm$q2.5$v, agwt.ipm$q2.5$v), v.upper = c(rep(NA, 13), mall.ipm$q97.5$v, agwt.ipm$q97.5$v)))
 
-
-
 v.out <- v.out %>% 
-  mutate_at(c('v.mean', 'v.lower', 'v.upper'), as.numeric)
-
-v.agwt <- data.frame(cbind(Year = 1992:2020, v.mean = agwt.ipm$mean$v, v.lower = agwt.ipm$q2.5$v, v.upper = agwt.ipm$q97.5$v))
-
-
-v.agwt <- v.agwt %>% 
   mutate_at(c('v.mean', 'v.lower', 'v.upper'), as.numeric)
 
 ggplot(v.out, aes(x = Year, y = v.mean, group = Species, fill = Species)) +
@@ -445,22 +434,10 @@ ggplot(v.out, aes(x = Year, y = v.mean, group = Species, fill = Species)) +
   ylim(0,6) +
   ylab("Vulnerability")
 
-
-ggplot(v.agwt, aes(x = Year, y = v.mean)) +
-  add_phylopic(img = agwt.img, color = "black", x = 15, y = 0.5, ysize = 1.7) +
-  # add_phylopic(img = mall.img, color = "black", x = 15, y = 3.5, ysize = 1.5) +
-  geom_line(linewidth = 0.5, color = sp.col[1]) +
-  geom_ribbon(aes(ymin = v.lower, ymax = v.upper), fill = sp.col[1], alpha = 0.3) +
-  theme_recruit() +
-  ylim(0,4) +
-  ylab("Vulnerability")
-
 ggsave("figures/vulnerability_new_both.jpg", units="cm", width=8, height=7, dpi=600)
 
 # overall population (bpop)
 Bpop.both <- data.frame(cbind(Year = 1992:2020, Species = c(rep(c("Mallard", "Green-winged Teal"), each = length(agwt.ipm$mean$N_tot))), mean = c(rep(NA, 13), mall.ipm$mean$N_tot, agwt.ipm$mean$N_tot), lower = c(rep(NA, 13), mall.ipm$q2.5$N_tot, agwt.ipm$q2.5$N_tot), upper = c(rep(NA, 13), mall.ipm$q97.5$N_tot, agwt.ipm$q97.5$N_tot)))
-# 
-# Bpop.all <- data.frame(cbind(Year = 2005:2020, Species = rep(c("Mallard"), length(mall.ipm$mean$N_tot)), Bpop.all.mean = c(mall.ipm$mean$N_tot), Bpop.all.lower = c(mall.ipm$q2.5$N_tot), Bpop.all.upper = c(mall.ipm$q97.5$N_tot)))
 
 Bpop.both <- Bpop.both %>% 
   mutate_at(c('mean', 'lower', 'upper'), as.numeric)
@@ -475,19 +452,7 @@ ggplot(Bpop.both, aes(x = Year, y = mean, group = Species)) +
   scale_fill_manual(values = sp.col) +
   ylab("Population index (10,000s)")
 
-Bpop.agwt <- data.frame(cbind(Year = 1992:2020, mean = agwt.ipm$mean$N_tot, lower = agwt.ipm$q2.5$N_tot, upper = agwt.ipm$q97.5$N_tot))
-
-Bpop.agwt <- Bpop.agwt %>% 
-  mutate_at(c('mean', 'lower', 'upper'), as.numeric)
-
-ggplot(Bpop.agwt, aes(x = Year, y = Bpop.all.mean)) +
-  geom_line(color = sp.col[1], linewidth = 0.5) +
-  geom_ribbon(aes(ymin = Bpop.all.lower, ymax = Bpop.all.upper), fill = sp.col[1], alpha = 0.5) +
-  theme_recruit()+
-  ylab("Population index (10,000s)")
-
 ggsave("figures/total_pop_size_new.jpg", units="cm", width=8, height=7, dpi=600)
-
 
 # Plotting population by age-sex class
 mall.Bpop.out <- data.frame(cbind(Class = rep(c("Juvenile Male", "Juvenile Female", "Adult Male", "Adult Female"), each = length(mall.ipm$mean$N_AHY_fem)), Year = rep(2005:2020, 4), Bpop.mean = c(mall.ipm$mean$N_HY_mal, mall.ipm$mean$N_HY_fem, mall.ipm$mean$N_AHY_mal, mall.ipm$mean$N_AHY_fem), Bpop.lower = c(mall.ipm$q2.5$N_HY_mal, mall.ipm$q2.5$N_HY_fem, mall.ipm$q2.5$N_AHY_mal, mall.ipm$q2.5$N_AHY_fem), Bpop.upper = c(mall.ipm$q97.5$N_HY_mal, mall.ipm$q97.5$N_HY_fem, mall.ipm$q97.5$N_AHY_mal, mall.ipm$q97.5$N_AHY_fem)))
@@ -615,11 +580,13 @@ mall.beta.plot <- ggplot(mall.beta.all, aes(x = Covariate_effect, y = Covariate)
   geom_vline(xintercept = 0, linetype="dashed", color = "black", linewidth=0.3) +
   annotate("text", x = 0.4, y = 4, label = "*") +
   xlim(-0.5, 0.5) +
+  annotate("text", x=-0.45, y=3.75, label= "(a)") +
+  annotate("text", x=0.4, y=3, label= "*") +
   labs(x = "Covariate effect estimate", y = "Environmetnal covariate") +
   ggtitle("Mallard")
 
 # combine all plots
-(alpha.plot + gamma.plot)/mall.beta.plot +  plot_layout(guides = "collect", widths = 1.5, heights = unit(c(6, 3), 'cm')) & theme(legend.position = 'bottom')
+# (alpha.plot + gamma.plot)/mall.beta.plot +  plot_layout(guides = "collect", widths = 1.5, heights = unit(c(6, 3), 'cm')) & theme(legend.position = 'bottom')
 
 ggsave("figures/cov_effect_prod_mall_new_2005_2020.jpg",  units="cm", width=12, height=12, dpi=600)
 
@@ -725,6 +692,7 @@ agwt.beta.plot <- ggplot(agwt.beta.all, aes(x = Covariate_effect, y = Covariate)
   theme_cov() +
   geom_vline(xintercept = 0, linetype="dashed", color = "black", linewidth=0.3) +
   xlim(-0.5, 0.5) +
+  annotate("text", x=-0.45, y=3.75, label= "(b)") +
   labs(x = "Covariate effect estimate", y = "Environmetnal covariate") +
   ggtitle("Green-winged teal") 
 

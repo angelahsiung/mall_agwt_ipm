@@ -5,22 +5,19 @@
     #############################
 # Model code adapted from Devers et al. (2021)
 ## Priors for survival rate components
-# Priors for age*sex (cohort) component
-
-# Mean hunting survival (overall intercept)
+## muN denotes spring/summer survival probabilities, muH denotes fall/winter survival probabilities
+## am = adult male, af = adult female, jm = juvenile male, jf = juvenile female. 
 
 	for(t in 1:(nyrs-1)){		
-		muN.am[t] ~ dnorm(0, 1.51) #dnorm(mean.PH.am, tau.PH.am) 
-		muN.af[t] ~ dnorm(0, 1.51) #dnorm(mean.PH.af, tau.PH.af) 
-		muN.jm[t] ~ dnorm(0, 1.51) #dnorm(mean.PH.jm, tau.PH.jm) 
-		muN.jf[t] ~ dnorm(0, 1.51) #dnorm(mean.PH.jm, tau.PH.jm)
-		#muH[1:4,t] ~ dmnorm(mean.IntH[1:4], Omega[,]) #dnorm(0, 1.51)
-		#muH[1:4,t] ~ dmnorm(mean.IntH[1:4], Omega[,])#dnorm(mean.PH.jf, tau.PH.jf) #dnorm(0, 1.51)
-		#muH[1:4,t] ~ dmnorm(mean.IntH[1:4], Omega[,])
-		muH.am[t] ~ dnorm(0, 1.51) #dnorm(mean.H.am,tau.H.am) # hieararchical prior for random effects centered on overall intercept
-		muH.af[t] ~ dnorm(0, 1.51) #dnorm(mean.H.af,tau.H.af)
-		muH.jm[t] ~ dnorm(0, 1.51) #dnorm(mean.H.jm,tau.H.jm)
-		muH.jf[t] ~ dnorm(0, 1.51) #dnorm(mean.H.jf,tau.H.jf)
+		muN.am[t] ~ dnorm(0, 1.51) 
+		muN.af[t] ~ dnorm(0, 1.51)  
+		muN.jm[t] ~ dnorm(0, 1.51) 
+		muN.jf[t] ~ dnorm(0, 1.51) 
+
+		muH.am[t] ~ dnorm(0, 1.51) 
+		muH.af[t] ~ dnorm(0, 1.51) 
+		muH.jm[t] ~ dnorm(0, 1.51) 
+		muH.jf[t] ~ dnorm(0, 1.51) 
 
 	}
 
@@ -32,16 +29,16 @@
 		f.jf[t] ~ dbeta(1,1)
 	}
 
-# Priors for prcp paramater
+# Priors for environmental covariate coefficients
+## alphas are for fall/winter survival, gammas are for spring/summer survival
 for(i in 1:4){
-
-alpha_prcp[i] ~ dnorm(0, 0.37)#dnorm(0, 0.37)
-alpha_dx32[i] ~ dnorm(0, 0.37)#dnorm(0, 0.37)
-gamma_prcp[i] ~ dnorm(0, 0.37)#dnorm(0, 0.37)
-gamma_dx32[i] ~ dnorm(0, 0.37)#dnorm(0, 0.37)
+alpha_prcp[i] ~ dnorm(0, 0.37)
+alpha_dx32[i] ~ dnorm(0, 0.37)
+gamma_prcp[i] ~ dnorm(0, 0.37)
+gamma_dx32[i] ~ dnorm(0, 0.37)
 }
 
-# Create species-, cohort-, and year-specific survival probabilities
+# cohort-specific annual survival probabilities
 	for(t in 1:(nyrs-1)){
 		logit(SH.am[t]) <- muH.am[t] + alpha_prcp[1]*prcp[t] + alpha_dx32[1]*dx32[t]
 		logit(SN.am[t]) <- muN.am[t] + gamma_prcp[1]*prcp[t] + gamma_dx32[1]*dx32[t] 
@@ -173,6 +170,7 @@ gamma_dx32[i] ~ dnorm(0, 0.37)#dnorm(0, 0.37)
 			recovmatP.jm[t,1:nyrs] ~ dmulti(recoveriesP.jm[t,1:nyrs], relmatP.jm[t])
 			recovmatP.jf[t,1:nyrs] ~ dmulti(recoveriesP.jf[t,1:nyrs], relmatP.jf[t])
 		}
+		
 	#### ANNUAL SURVIVAL ESTIMATE
 		for(t in 1:(nyrs-1)){
 			S.am[t]<-SH.am[t] * SN.am[t]
@@ -190,6 +188,8 @@ gamma_dx32[i] ~ dnorm(0, 0.37)#dnorm(0, 0.37)
 tau.R <- pow(sd.R, -2)
 sd.R ~ dunif(0, 1)
 beta ~ dnorm(0, 1)
+
+## Priors for environmental covariate coefficients
 beta_pond ~ dnorm(0, 0.01)
 beta_prcp ~ dnorm(0, 0.01)
 beta_dx32 ~ dnorm(0, 0.01)
@@ -203,10 +203,10 @@ ponds[16] ~ dnorm(0, 1) # for mallard
   #true fall age ratio
 	mu.R[t] <- beta
 	esp[t] ~ dnorm(mu.R[t], tau.R)
-	log(R[t]) <- esp[t] + beta_pond*ponds[t] + beta_prcp*prev.prcp[t] + beta_dx32*prev.dx32[t] #+ beta_nao*prev.nao[t]
+	log(R[t]) <- esp[t] + beta_pond*ponds[t] + beta_prcp*prev.prcp[t] + beta_dx32*prev.dx32[t]
 	v[t] <- f.jf[t]/f.af[t] # differential vulnerability
 	q[t] <- R[t]*v[t]/(1 + R[t]*v[t])
-	W.jv[t] ~ dbinom(q[t], W.tot[t])	##Likelihood for q
+	W.jv[t] ~ dbinom(q[t], W.tot[t])
     } # t
 
 ################################
@@ -214,60 +214,63 @@ ponds[16] ~ dnorm(0, 1) # for mallard
 ################################
 
 # Priors
-    # sig.t ~ dgamma(3.5,0.05) #agwt
-    sig.t ~ dgamma(15, 0.1) #mall
-    sig2.t <- pow(sig.t, 2)
-    tau.t <- pow(sig.t, -2)
-    delta ~ dgamma(4, 0.1) #agwt
+  # sig.t ~ dgamma(3.5,0.05) #agwt
+  sig.t ~ dgamma(15, 0.1) #mall
+  sig2.t <- pow(sig.t, 2)
+  tau.t <- pow(sig.t, -2)
+  # Prior for latent Bpop size for eastern survey area prior to 1998
+  delta ~ dgamma(4, 0.1) #agwt
 
-    # initial population size (tsa = traditional survey area, esa = eastern survey area)
-    ##### initial population for MALL
-    n_HY_fem ~ dnorm(700*0.4*0.45,0.0005)I(0,) #juvenile female
-    n_HY_mal ~ dnorm(700*0.4*0.55,0.0005)I(0,)  #juvenile male
-    n_AHY_fem ~  dnorm(700*0.6*0.27,0.0005)I(0,) #adult female
-    n_AHY_mal ~ dnorm(700*0.6*0.73,0.0005)I(0,) #adult male
-    ##### initial population for AGWT
-    #n_HY_fem ~ dnorm(50, 0.0016)I(0,) #juvenile female
-    #n_HY_mal ~  dnorm(50, 0.0016)I(0,) #juvenile male
-    #n_AHY_fem ~ dnorm(50, 0.0016)I(0,) #adult female
-    #n_AHY_mal ~ dnorm(50, 0.0016)I(0,) #adult male
+  # initial population size (tsa = traditional survey area, esa = eastern survey area)
+  ##### initial population for MALL
+  n_HY_fem ~ dnorm(700*0.4*0.45,0.0005)I(0,) #juvenile female
+  n_HY_mal ~ dnorm(700*0.4*0.55,0.0005)I(0,)  #juvenile male
+  n_AHY_fem ~  dnorm(700*0.6*0.27,0.0005)I(0,) #adult female
+  n_AHY_mal ~ dnorm(700*0.6*0.73,0.0005)I(0,) #adult male
+  ##### initial population for AGWT
+  #n_HY_fem ~ dnorm(50, 0.0016)I(0,) #juvenile female
+  #n_HY_mal ~  dnorm(50, 0.0016)I(0,) #juvenile male
+  #n_AHY_fem ~ dnorm(50, 0.0016)I(0,) #adult female
+  #n_AHY_mal ~ dnorm(50, 0.0016)I(0,) #adult male
 
-    N_HY_fem[1] <- round(n_HY_fem)
-    N_AHY_fem[1] <- round(n_AHY_fem)
-    N_HY_mal[1] <- round(n_HY_mal)
-    N_AHY_mal[1] <- round(n_AHY_mal)
+  N_HY_fem[1] <- round(n_HY_fem)
+  N_AHY_fem[1] <- round(n_AHY_fem)
+  N_HY_mal[1] <- round(n_HY_mal)
+  N_AHY_mal[1] <- round(n_AHY_mal)
 
-    # Likelihood
-    # state process
-    for(t in 2:nyrs){
-    # Popluation size during summer (Bpop survey)
-    N_HY_mal[t] <- (N_HY_fem[t-1] + N_AHY_fem[t-1])*R[t-1]*SH.jm[t-1]*(SN.jm[t-1]^0.25)
-    N_HY_fem[t] <- (N_HY_fem[t-1] + N_AHY_fem[t-1])*R[t-1]*SH.jf[t-1]*(SN.jf[t-1]^0.25)
+  # Likelihood
+  # state process
+  for(t in 2:nyrs){
+  # Popluation size during the summer (Bpop survey)
+  N_HY_mal[t] <- (N_HY_fem[t-1] + N_AHY_fem[t-1])*R[t-1]*SH.jm[t-1]*(SN.jm[t-1]^0.25)
+  N_HY_fem[t] <- (N_HY_fem[t-1] + N_AHY_fem[t-1])*R[t-1]*SH.jf[t-1]*(SN.jf[t-1]^0.25)
 
-    N_AHY_mal[t] <- (N_HY_mal[t-1] + N_AHY_mal[t-1])*S.am[t-1] 
-    N_AHY_fem[t] <- (N_HY_fem[t-1] + N_AHY_fem[t-1])*S.af[t-1] 
+  N_AHY_mal[t] <- (N_HY_mal[t-1] + N_AHY_mal[t-1])*S.am[t-1] 
+  N_AHY_fem[t] <- (N_HY_fem[t-1] + N_AHY_fem[t-1])*S.af[t-1] 
 
-    }
+  }
 
+   for(t in  1:nyrs) {
+   # Total population size
+   N_tot[t] <- N_HY_fem[t] + N_HY_mal[t] + N_AHY_fem[t] + N_AHY_mal[t]
 
+   }
+   
+   # Annual population growth rate
+   for(t in  1:(nyrs-1)) {
+   lambda[t] <- N_tot[t+1]/N_tot[t]
+}
 
-     for(t in  1:nyrs) {
-     # Total population size
-     N_tot[t] <- N_HY_fem[t] + N_HY_mal[t] + N_AHY_fem[t] + N_AHY_mal[t]
+  # Observation process
+  ## Years prior to beginning of eastern survey area surveys
+   # for(t in 1:(begin.esa.year-1)){ # Comment this for loop if running mallard model
+   # y_t[t] ~ dnorm(N_tot[t] + delta, tau.t)
+   # }
+  ## Years after eastern survey area surveys began
+  # for(t in begin.esa.year:nyrs){ # Comment this out if running mallard model
+  for(t in 1:nyrs){ # Comment this out if running agwt model
+  y_t[t] ~ dnorm(N_tot[t], tau.t)
+  }
 
-     }
-     for(t in  1:(nyrs-1)) {
-     lambda[t] <- N_tot[t+1]/N_tot[t]
-	}
-
-    # Observation process
-     # for(t in 1:(begin.esa.year-1)){ # Comment this for loop if running mallard model
-     # y_t[t] ~ dnorm(N_tot[t] + delta, tau.t)
-     # }
-    # for(t in begin.esa.year:nyrs){ # Comment this out if running mallard model
-    for(t in 1:nyrs){ # Comment this out if running agwt model
-    y_t[t] ~ dnorm(N_tot[t], tau.t)
-    }
-
-    } # end model
+  } # end model
     

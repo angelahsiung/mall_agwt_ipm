@@ -4,52 +4,17 @@ library(ggplot2)
 library(patchwork)
 library(ggpubr)
 
+# Load model output
 mall.ipm <-readRDS("output/mall_ipm_2005-2020_output.rda")
-n.draws <- mall.ipm$mcmc.info$n.samples # Determine number of MCMC draws
-corr <- matrix(NA, ncol=9, nrow=n.draws) # Create object to hold results
-draws <- mall.ipm$sims.list # Dig out MCMC samples
 
 agwt.ipm <- readRDS("output/agwt_ipm_1992_2020_output.rda")
-n.draws <-  agwt.ipm$mcmc.info$n.samples # Determine number of MCMC draws
-corr <- matrix(NA, ncol=9, nrow=n.draws) # Create object to hold results
-draws <- agwt.ipm$sims.list # Dig out MCMC samples
 
-# Look at correlations
 
-for (s in 1:n.draws){ # Loop over all MCMC draws and get correlations
-  corr[s,1] <- cor(draws$SH.am[s,], draws$lambda[s,])
-  corr[s,2] <- cor(draws$SN.am[s,], draws$lambda[s,])
-  corr[s,3] <- cor(draws$SH.af[s,], draws$lambda[s,])
-  corr[s,4] <- cor(draws$SN.af[s,], draws$lambda[s,])
-  corr[s,5] <- cor(draws$SH.jm[s,], draws$lambda[s,])
-  corr[s,6] <- cor(draws$SN.jm[s,], draws$lambda[s,])
-  corr[s,7] <- cor(draws$SH.jf[s,], draws$lambda[s,])
-  corr[s,8] <- cor(draws$SN.jf[s,], draws$lambda[s,])
-  # corr[s,9] <- cor(draws$R[s,1:15], draws$lambda[s,]) # mall
-  corr[s,9] <- cor(draws$R[s,1:28], draws$lambda[s,]) # agwt
-  
-}
-# Calculate posterior summaries for the correlation coefficients
-# Posterior means
-mean <- apply(corr, 2, mean)
-# 95% credible intervals
-cri <- function(x) quantile(x, c(0.025, 0.975))
-ci <- apply(corr, 2, cri)
-lower <- ci[1,]
-upper <- ci[2,]
-
-corr.dat <- as.data.frame(cbind(Param = c('SH.am', 'SN.am', 'SH.af', 'SN.af', 'SH.jm', 'SN.jm', 'SH.jf', 'SN.jf', 'R'), Mean = mean, Lower = lower, Upper = upper))
-
-corr.dat <- corr.dat %>% 
-  mutate_at(c('Mean', 'Lower', 'Upper'), as.numeric)
-
-ggplot(corr.dat) +
-  geom_pointrange(aes(x = Param, y = Mean, ymin = Lower, ymax = Upper))
-
-####################################################################################
-####### contribution to variance of lambda (adapted from Koons et al. 2017)  #######
-####################################################################################
-
+###################################################
+####### contribution to variance of lambda  #######
+###################################################
+# Code adapted from Koons et al. (2017). Citation below.
+## Koons, D. N., T. W. Arnold, and M. Schaub. 2017. “Understanding the Demographic Drivers of Realized Population Growth Rates.”  Ecological Applications 27: 2102–2115.
 
 # Turn tLTRE into a function
 tltre.fun <- function(ipm){
@@ -85,13 +50,13 @@ lambda <- expression(((n.hy.fem + n.ahy.fem)*R*SH.jm*(SN.jm^0.25) + (n.hy.fem + 
 
 D(lambda, "R")
 
-# Step 2: Calculate stage-specific proportions of abundances for each sex-age class at each time step and for each of the saved MCMC samples. 
+# Calculate age-sex class-specific proportions of abundances at each time step and for each of the saved MCMC samples. 
 n.hy.mal <- draws$N_HY_mal[, 1:n.years] / draws$N_tot[, 1:n.years]
 n.ahy.mal <- draws$N_AHY_mal[, 1:n.years] / draws$N_tot[, 1:n.years]
 n.hy.fem <- draws$N_HY_fem[, 1:n.years] / draws$N_tot[, 1:n.years]
 n.ahy.fem <- draws$N_AHY_fem[, 1:n.years] / draws$N_tot[, 1:n.years]
 
-# Step 3: Calculate the transient sensitivities for each demographic parameter, evaluated at temporal means of each parameter. 
+# Calculate the transient sensitivities for each demographic parameter, evaluated at temporal means of each parameter. 
 sens_SH_am <- sens_SN_am <- sens_SH_af <-sens_SN_af <- sens_SH_jm <- sens_SN_jm <- sens_SH_jf <- sens_SN_jf <- sens_R <-sens_n_hy_mal <-sens_n_ahy_mal <-sens_n_hy_fem <-sens_n_ahy_fem <- matrix(0,samples,1)
 
 mu <- list(SH.am = rowMeans(SH.am),
@@ -107,22 +72,7 @@ mu <- list(SH.am = rowMeans(SH.am),
            n.ahy.mal = rowMeans(n.ahy.mal),
            n.hy.fem = rowMeans(n.hy.fem),
            n.ahy.fem = rowMeans(n.ahy.fem))
-# mu_SH_am <- rowMeans(SH.am)
-# mu_SN_am <- rowMeans(SN.am)
-# mu_SH_af <- rowMeans(SH.af)
-# mu_SN_af <- rowMeans(SN.af)
-# mu_SH_jm <- rowMeans(SH.jm)
-# mu_SN_jm <- rowMeans(SN.jm)
-# mu_SH_jf <- rowMeans(SH.jf)
-# mu_SN_jf <- rowMeans(SN.jf)
-# mu_R <- rowMeans(R)
-# mu_n_hy_mal <- rowMeans(n.hy.mal)
-# mu_n_ahy_mal <- rowMeans(n.ahy.mal)
-# mu_n_hy_fem <- rowMeans(n.hy.fem)
-# mu_n_ahy_fem <- rowMeans(n.ahy.fem)
 
-# sens <- matrix(NA, n.draws, 13)
-# colnames(sens) <- c("SH.am", "SN.am", "SH.af", "SN.af", "SH.jm", "SN.jm", "SH.jf", "SN.jf", "R", "N_HY_fem", "N_AHY_fem", "N_HY_mal", "N_AHY_mal")
 sens_SH_am <- eval(D(lambda, "SH.am"), envir=mu)
 sens_SN_am <- eval(D(lambda, "SN.am"), envir=mu)
 sens_SH_af <- eval(D(lambda, "SH.af"), envir=mu)
@@ -138,29 +88,15 @@ sens_N_HY_mal <- eval(D(lambda, "n.hy.mal"), envir=mu)
 sens_N_AHY_mal<- eval(D(lambda, "n.ahy.mal"), envir=mu)
 
 
-# 
-# for (j in 1:samples){
-#    sens_R[j] <- (((mu_n_hy_fem[j] + mu_n_ahy_fem[j]) * mu_SH_jm[j] * (mu_SN_jm[j]^0.25) + (mu_n_hy_fem[j] + mu_n_ahy_fem[j]) * mu_SH_jf[j] * (mu_SN_jf[j]^0.25))/(mu_n_hy_fem[j] + mu_n_ahy_fem[j] + mu_n_hy_mal[j] + mu_n_ahy_mal[j]))
-  # sens_F2[j] <- (0.5*mu_Sfj[j]*mu_nf2[j])
-  # sens_Sfj[j] <- (0.5*mu_F1[j]*mu_nf1[j]+0.5*mu_F2[j]*mu_nf2[j])
-  # sens_Sfa[j] <- 1
-  # sens_nf1[j] <- (0.5*mu_F1[j]*mu_Sfj[j]+mu_Sfa[j]) -
-  #   (0.5*mu_Sfj[j]*(mu_F1[j]*mu_nf1[j]+mu_F2[j]*mu_nf2[j])+mu_Sfa[j]) 
-  # sens_nf2[j] <- (0.5*mu_F2[j]*mu_Sfj[j]+mu_Sfa[j]) -
-  #   (0.5*mu_Sfj[j]*(mu_F1[j]*mu_nf1[j]+mu_F2[j]*mu_nf2[j])+mu_Sfa[j])
-#}
-
-# Step 4: Calculate the LTRE contributions of temporal process (co)variation # in the demographic parameters to temporal variation in the realized population growth rates.
+# Calculate the contributions of temporal process variation and covariations in the demographic parameters to temporal variation in the realized population growth rates.
 
 cont_SH_am <- cont_SN_am <- cont_SH_af <-cont_SN_af <- cont_SH_jm <- cont_SN_jm <- cont_SH_jf <- cont_SN_jf <- cont_R <-cont_N_HY_mal <-cont_N_AHY_mal <-cont_N_HY_fem <-cont_N_AHY_fem <- matrix(0,samples,1)
 
 for (j in 1:samples){
   dp_stoch <- cbind(SH.am[j,],SN.am[j,],SH.af[j,],SN.af[j,], SH.jm[j,], SN.jm[j,], SH.jf[j,], SN.jf[j,], R[j,],n.hy.fem[j,],n.ahy.fem[j,],n.hy.mal[j,], n.ahy.mal[j,])
-  # Derive process variance and covariance among demographic parameters using
-  # 'shrinkage' estimates of vital rates and proportionate abundances:
+
   dp_varcov <- var(dp_stoch)
   sensvec <- c(sens_SH_am[j], sens_SN_am[j], sens_SH_af[j], sens_SN_af[j], sens_SH_jm[j], sens_SN_jm [j], sens_SH_jf[j], sens_SN_jf[j], sens_R[j], sens_N_HY_fem[j], sens_N_AHY_fem[j], sens_N_HY_mal[j], sens_N_AHY_mal[j])
-  # calculate demographic contributions
   contmatrix <- matrix(0,13,13)
    for (k in 1:13){
      for (m in 1:13){
@@ -183,7 +119,7 @@ for (j in 1:samples){
   cont_N_AHY_mal[j] <- contributions[13]
 }
 
-# Step 5: Calculate desired statistics (e.g. the mean and Bayesian credible  # interval) from the derived posterior distributions of the LTRE contributions. The following is an example for the total contribution from all demographic parameters.
+# Calculate the mean and Bayesian credible intervals from the  posterior distributions of the LTRE contributions.
 totalcont <- cont_SH_am + cont_SN_am + cont_SH_af + cont_SN_af + cont_SH_jm + cont_SN_jm + cont_SH_jf + cont_SN_jf + cont_R + cont_N_HY_mal + cont_N_AHY_mal + cont_N_HY_fem + cont_N_AHY_fem
 mean(totalcont)
 quantile(totalcont,0.05)
@@ -208,7 +144,7 @@ return(cont.table)
 mall.cont.table <- tltre.fun(mall.ipm)
 agwt.cont.table <- tltre.fun(agwt.ipm)
 
-# Custom theme
+# Custom plotting theme
 theme_tltre <- function(){ theme(
   axis.text = element_text(size = 6),
   axis.title = element_text(size = 7),
@@ -384,7 +320,7 @@ Rcont.precip <- ggplot(mean.conts.R, aes(x = Precipitation, y = Contribution)) +
   theme(axis.text.x = element_text(angle = 0), axis.text = element_text(size = 16), axis.title = element_text(size = 20)) +
   xlab(paste0('Interannual difference in winter ', '\n', 'precipitation in the south')) +
   ylab('Contribution of reproduction to population growth') +
-  annotate("text", x=-3.5, y=1, label= "A", size = 13) 
+  annotate("text", x=-3.5, y=1, label= "(b)", size = 13) 
 
   
 Rcont.ponds <- ggplot(mean.conts.R, aes(x = Ponds, y = Contribution)) +
@@ -394,7 +330,7 @@ Rcont.ponds <- ggplot(mean.conts.R, aes(x = Ponds, y = Contribution)) +
   theme(axis.text.x = element_text(angle = 0), axis.text = element_text(size = 16), axis.title = element_text(size = 20)) +
   xlab("Interannual difference in breeding habitat") +
   ylab('Contribution of reproduction to population growth') +
-  annotate("text", x=-2, y=1, label= "B", size = 13) 
+  annotate("text", x=-2, y=1, label= "(b)", size = 13) 
   
 
 

@@ -72,7 +72,8 @@ recov <- recov[recov$Age..VAGE!="Unknown",]
 ######## Starting new data frame for analysis #######
 #####################################################
 
-### Code adapted from Saunders et al. (2018)
+# Code adapted from Saunders et al. (2018). Citation below.
+## Saunders, S. P., M. T. Farr, A. D. Wright, C. A. Bahlai, J. W. Ribeiro, S. Rossman, A. L. Sussman, T. W. Arnold, and E. F. Zipkin. 2019. “Disentangling Data Discrepancies with Integrated Population Models.” Ecology 100: 1–14.
 
 # Bring in B.Month, convert to season
 clean<-as.data.frame(matrix(NA,nrow=length(recov$B.Month),ncol=1))
@@ -455,15 +456,16 @@ ggplot(cohort_table, aes(x = cohort, y = Number)) +
 ###### Bpop survey ##############
 ###############################
 
-#Breeding population estimates and standard errors (in thousands) for Mallards from the traditional survey area (strata 1-18, 20-50, 75-77), 1955-2019
+#Breeding population estimates and standard errors (in thousands) for Mallards and Green-winged teal from the traditional survey area (strata 1-18, 20-50, 75-77) and eastern survey area. 
 
 # Read in stratum-specific estimates
-
+## mallard
 dat.tsa <- read.csv("wbphs_traditionalarea_estimates_forDistribution.csv")
 dat.esa <- read.csv("easternsurvey_mall_agwt.csv")
 dat.esa <- dat.esa[dat.esa$MASAlpha=="mall" & dat.esa$ReportingScale == "EasternCA",]
 dat.tsa <- dat.tsa[dat.tsa$survey_species=="MALL" & dat.tsa$stratum%in%c(14:max(dat.tsa$stratum)),]
 
+## agwt
 # dat.tsa <- read.csv("wbphs_traditionalarea_estimates_forDistribution.csv")
 # dat.esa <- read.csv("easternsurvey_mall_agwt.csv")
 # dat.esa <- dat.esa[dat.esa$MASAlpha=="agwt" & dat.esa$ReportingScale == "EasternCA",]

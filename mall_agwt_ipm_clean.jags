@@ -3,7 +3,7 @@
     #############################
     #### Band-recovery model ####
     #############################
-# Model code adapted from Devers et al. (2021)
+# Model code adapted from Devers et al. (2021). Please see citation at bottom of the script
 ## Priors for survival rate components
 ## muN denotes spring/summer survival probabilities, muH denotes fall/winter survival probabilities
 ## am = adult male, af = adult female, jm = juvenile male, jf = juvenile female. 
@@ -50,8 +50,9 @@ gamma_dx32[i] ~ dnorm(0, 0.37)
 		logit(SN.jf[t]) <- muN.jf[t] + gamma_prcp[4]*prcp[t] + gamma_dx32[4]*dx32[t]
 	}
 
-##### PRE-SEASON BANDED BIRDS
-	##### Cell Probabilities: Adult Preseason- Banded Birds
+## M-array banding and recovery cell probabilities
+### Pre-hunting season bandings
+	#### Adults (am = adult male, af = adult female)
 		# Diagonals
 		for(t in 1:(nyrs-1)){
 			recoveries.am[t,t] <- f.am[t]
@@ -78,7 +79,7 @@ gamma_dx32[i] ~ dnorm(0, 0.37)
 		}
 
 	#-----------------------------------------------------------------------------------
-	##### Cell Probabilities: Juvenile Preseason- Banded Birds
+	### juvenils (jm = juvenile male, jf = juvenile female)
 		# Diagonals
 		for(t in 1:nyrs){
 			recoveries.jm[t,t] <- f.jm[t]
@@ -89,14 +90,14 @@ gamma_dx32[i] ~ dnorm(0, 0.37)
 			recoveries.jm[t,(t+1)] <- f.am[(t+1)]*SH.jm[t]*SN.jm[t]
 			recoveries.jf[t,(t+1)] <- f.af[(t+1)]*SH.jf[t]*SN.jf[t]
 		}
-		# Rest
+		# After first off diagonal
 		for(t in 1:(nyrs-2)){
 			for(j in (t+2):nyrs){
 				recoveries.jm[t,j] <- f.am[j]*SH.jm[t]*SN.jm[t]*prod(SH.am[(t+1):(j-1)])*prod(SN.am[(t+1):(j-1)])
 				recoveries.jf[t,j] <- f.af[j]*SH.jf[t]*SN.jf[t]*prod(SH.af[(t+1):(j-1)])*prod(SN.af[(t+1):(j-1)])
 			}
 		}
-		# Lower triangular is all zeros
+		# Probability is 0 for the lower triangle
 		for(t in 1:(nyrs-1)){
 			for(j in (t+1):nyrs){
 				recoveries.jm[j,t] <- 0
@@ -115,8 +116,8 @@ gamma_dx32[i] ~ dnorm(0, 0.37)
 			recovmat.jf[t,1:(nyrs+1)] ~ dmulti(recoveries.jf[t,1:(nyrs+1)], relmat.jf[t])
 		}
 
-##### POST-SEASON BANDED BIRDS
-	##### Cell Probabilities
+### Post-hunting season bandings
+	#### Adults
 		# Diagonals
 		for(t in 1:(nyrs-2)){
 			recoveriesP.am[t,t] <- f.am[(t+1)]*SN.am[t]
@@ -143,7 +144,7 @@ gamma_dx32[i] ~ dnorm(0, 0.37)
 			recovmatP.af[t,1:nyrs] ~ dmulti(recoveriesP.af[t,1:nyrs], relmatP.af[t])
 		}
 	#-----------------------------------------------------------------------------------
-	##### Cell Probabilities: Juvenile Postseason- Banded Birds
+	### Juveniles
 		# Diagonals
 		for(t in 1:(nyrs-1)){
 			recoveriesP.jm[t,t] <- f.am[(t+1)]*SN.jm[t]
@@ -171,7 +172,7 @@ gamma_dx32[i] ~ dnorm(0, 0.37)
 			recovmatP.jf[t,1:nyrs] ~ dmulti(recoveriesP.jf[t,1:nyrs], relmatP.jf[t])
 		}
 		
-	#### ANNUAL SURVIVAL ESTIMATE
+	#### Annual survival probabilities
 		for(t in 1:(nyrs-1)){
 			S.am[t]<-SH.am[t] * SN.am[t]
 			S.af[t]<-SH.af[t] * SN.af[t]
@@ -273,4 +274,6 @@ ponds[16] ~ dnorm(0, 1) # for mallard
   }
 
   } # end model
-    
+
+## Literature on which the dead-recovery model is adapted:
+# Devers, P. K., R. L. Emmet, G. S. Boomer, G. S. Zimmerman, and J. A. Royle. 2021. “Evaluation of a Two-Season Banding Program to Estimate and Model Migratory Bird Survival.” Ecological Applications 31: 1–18.

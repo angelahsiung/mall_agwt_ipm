@@ -1,26 +1,26 @@
 {
-    "id": "BAA6C571",
+    "id": "68AF0F76",
     "path": "~/GitHub/mall_agwt_ipm/mall_agwt_tLTRE.R",
     "project_path": "mall_agwt_tLTRE.R",
     "type": "r_source",
-    "hash": "2387411396",
+    "hash": "2049480641",
     "contents": "",
-    "dirty": false,
-    "created": 1710542732918.0,
+    "dirty": true,
+    "created": 1720996135860.0,
     "source_on_save": false,
     "relative_order": 1,
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "396,53",
-        "scrollLine": "385"
+        "cursorPosition": "167,0",
+        "scrollLine": "153"
     },
     "folds": "",
-    "lastKnownWriteTime": 1710542932,
+    "lastKnownWriteTime": 1722006258,
     "encoding": "ISO8859-1",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1710542932399,
+    "last_content_update": 1720998530804,
     "read_only": false,
     "read_only_alternatives": []
 }

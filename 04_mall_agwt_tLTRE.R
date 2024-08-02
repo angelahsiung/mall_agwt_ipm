@@ -1,60 +1,30 @@
-library(matrixStats)
-library(tidyverse)
-library(ggplot2)
-library(patchwork)
-library(ggpubr)
+##############################################################
+### The purpose of this script is to extract the MCMC samples 
+### from the IPM for each species and perform retrospective analyses
+### Date last updated: 07/26/2024
+##############################################################
 
-mall.ipm <-readRDS("output/mall_ipm_2005-2020_output.rda")
-n.draws <- mall.ipm$mcmc.info$n.samples # Determine number of MCMC draws
-corr <- matrix(NA, ncol=9, nrow=n.draws) # Create object to hold results
-draws <- mall.ipm$sims.list # Dig out MCMC samples
+# Prepare packages
+list.of.packages <- c("tidyverse", "patchwork", "ggpubr", "todor", "matrixStats")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)){install.packages(new.packages)}
+lapply(list.of.packages, require, character.only = TRUE)
 
-agwt.ipm <- readRDS("output/agwt_ipm_1992_2020_output.rda")
-n.draws <-  agwt.ipm$mcmc.info$n.samples # Determine number of MCMC draws
-corr <- matrix(NA, ncol=9, nrow=n.draws) # Create object to hold results
-draws <- agwt.ipm$sims.list # Dig out MCMC samples
+# Load model output (if needed)
+mall.ipm <-readRDS("mall_ipm_2005-2020_output.rda")
+agwt.ipm <- readRDS("agwt_ipm_1992_2020_output.rda")
 
-# Look at correlations
 
-for (s in 1:n.draws){ # Loop over all MCMC draws and get correlations
-  corr[s,1] <- cor(draws$SH.am[s,], draws$lambda[s,])
-  corr[s,2] <- cor(draws$SN.am[s,], draws$lambda[s,])
-  corr[s,3] <- cor(draws$SH.af[s,], draws$lambda[s,])
-  corr[s,4] <- cor(draws$SN.af[s,], draws$lambda[s,])
-  corr[s,5] <- cor(draws$SH.jm[s,], draws$lambda[s,])
-  corr[s,6] <- cor(draws$SN.jm[s,], draws$lambda[s,])
-  corr[s,7] <- cor(draws$SH.jf[s,], draws$lambda[s,])
-  corr[s,8] <- cor(draws$SN.jf[s,], draws$lambda[s,])
-  # corr[s,9] <- cor(draws$R[s,1:15], draws$lambda[s,]) # mall
-  corr[s,9] <- cor(draws$R[s,1:28], draws$lambda[s,]) # agwt
-  
-}
-# Calculate posterior summaries for the correlation coefficients
-# Posterior means
-mean <- apply(corr, 2, mean)
-# 95% credible intervals
-cri <- function(x) quantile(x, c(0.025, 0.975))
-ci <- apply(corr, 2, cri)
-lower <- ci[1,]
-upper <- ci[2,]
-
-corr.dat <- as.data.frame(cbind(Param = c('SH.am', 'SN.am', 'SH.af', 'SN.af', 'SH.jm', 'SN.jm', 'SH.jf', 'SN.jf', 'R'), Mean = mean, Lower = lower, Upper = upper))
-
-corr.dat <- corr.dat %>% 
-  mutate_at(c('Mean', 'Lower', 'Upper'), as.numeric)
-
-ggplot(corr.dat) +
-  geom_pointrange(aes(x = Param, y = Mean, ymin = Lower, ymax = Upper))
-
-####################################################################################
-####### contribution to variance of lambda (adapted from Koons et al. 2017)  #######
-####################################################################################
-
+###################################################
+####### contribution to variance of lambda  #######
+###################################################
+# Code adapted from Koons et al. (2017). Citation below.
+## Koons, D. N., T. W. Arnold, and M. Schaub. 2017. “Understanding the Demographic Drivers of Realized Population Growth Rates.”  Ecological Applications 27: 2102–2115.
 
 # Turn tLTRE into a function
 tltre.fun <- function(ipm){
   
-# # Calculate proportional population sizes
+# Calculate proportional population sizes
 n.years <- ncol(ipm$sims.list$SH.am)
 samples <- nrow(ipm$sims.list$SH.am)
 draws <- ipm$sims.list # Dig out MCMC samples
@@ -68,7 +38,9 @@ SN.jm <- ipm$sims.list$SN.jm
 SH.jf <- ipm$sims.list$SH.jf
 SN.jf <- ipm$sims.list$SN.jf
 R <- ipm$sims.list$R
-R <- R[, 1:15]
+## NOTE: This will need to be changed depending on which species. Might need to change it to be more flexible instead of hard-coded
+## REVIEW: Please review whether the subsetting makes sense. The reason for it is that we seem to have an extra year of productivity estimate compared to survivals, so we are removing the last year in the tLTRE
+R <- R[, 1:15] 
 N_HY_mal <- ipm$sims.list$N_HY_mal
 N_AHY_mal <- ipm$sims.list$N_AHY_mal
 N_HY_fem <- ipm$sims.list$N_HY_fem
@@ -85,13 +57,13 @@ lambda <- expression(((n.hy.fem + n.ahy.fem)*R*SH.jm*(SN.jm^0.25) + (n.hy.fem + 
 
 D(lambda, "R")
 
-# Step 2: Calculate stage-specific proportions of abundances for each sex-age class at each time step and for each of the saved MCMC samples. 
+# Calculate age-sex class-specific proportions of abundances at each time step and for each of the saved MCMC samples. 
 n.hy.mal <- draws$N_HY_mal[, 1:n.years] / draws$N_tot[, 1:n.years]
 n.ahy.mal <- draws$N_AHY_mal[, 1:n.years] / draws$N_tot[, 1:n.years]
 n.hy.fem <- draws$N_HY_fem[, 1:n.years] / draws$N_tot[, 1:n.years]
 n.ahy.fem <- draws$N_AHY_fem[, 1:n.years] / draws$N_tot[, 1:n.years]
 
-# Step 3: Calculate the transient sensitivities for each demographic parameter, evaluated at temporal means of each parameter. 
+# Calculate the transient sensitivities for each demographic parameter, evaluated at temporal means of each parameter. 
 sens_SH_am <- sens_SN_am <- sens_SH_af <-sens_SN_af <- sens_SH_jm <- sens_SN_jm <- sens_SH_jf <- sens_SN_jf <- sens_R <-sens_n_hy_mal <-sens_n_ahy_mal <-sens_n_hy_fem <-sens_n_ahy_fem <- matrix(0,samples,1)
 
 mu <- list(SH.am = rowMeans(SH.am),
@@ -107,22 +79,7 @@ mu <- list(SH.am = rowMeans(SH.am),
            n.ahy.mal = rowMeans(n.ahy.mal),
            n.hy.fem = rowMeans(n.hy.fem),
            n.ahy.fem = rowMeans(n.ahy.fem))
-# mu_SH_am <- rowMeans(SH.am)
-# mu_SN_am <- rowMeans(SN.am)
-# mu_SH_af <- rowMeans(SH.af)
-# mu_SN_af <- rowMeans(SN.af)
-# mu_SH_jm <- rowMeans(SH.jm)
-# mu_SN_jm <- rowMeans(SN.jm)
-# mu_SH_jf <- rowMeans(SH.jf)
-# mu_SN_jf <- rowMeans(SN.jf)
-# mu_R <- rowMeans(R)
-# mu_n_hy_mal <- rowMeans(n.hy.mal)
-# mu_n_ahy_mal <- rowMeans(n.ahy.mal)
-# mu_n_hy_fem <- rowMeans(n.hy.fem)
-# mu_n_ahy_fem <- rowMeans(n.ahy.fem)
 
-# sens <- matrix(NA, n.draws, 13)
-# colnames(sens) <- c("SH.am", "SN.am", "SH.af", "SN.af", "SH.jm", "SN.jm", "SH.jf", "SN.jf", "R", "N_HY_fem", "N_AHY_fem", "N_HY_mal", "N_AHY_mal")
 sens_SH_am <- eval(D(lambda, "SH.am"), envir=mu)
 sens_SN_am <- eval(D(lambda, "SN.am"), envir=mu)
 sens_SH_af <- eval(D(lambda, "SH.af"), envir=mu)
@@ -137,30 +94,16 @@ sens_N_AHY_fem <- eval(D(lambda, "n.ahy.fem"), envir=mu)
 sens_N_HY_mal <- eval(D(lambda, "n.hy.mal"), envir=mu)
 sens_N_AHY_mal<- eval(D(lambda, "n.ahy.mal"), envir=mu)
 
-
-# 
-# for (j in 1:samples){
-#    sens_R[j] <- (((mu_n_hy_fem[j] + mu_n_ahy_fem[j]) * mu_SH_jm[j] * (mu_SN_jm[j]^0.25) + (mu_n_hy_fem[j] + mu_n_ahy_fem[j]) * mu_SH_jf[j] * (mu_SN_jf[j]^0.25))/(mu_n_hy_fem[j] + mu_n_ahy_fem[j] + mu_n_hy_mal[j] + mu_n_ahy_mal[j]))
-  # sens_F2[j] <- (0.5*mu_Sfj[j]*mu_nf2[j])
-  # sens_Sfj[j] <- (0.5*mu_F1[j]*mu_nf1[j]+0.5*mu_F2[j]*mu_nf2[j])
-  # sens_Sfa[j] <- 1
-  # sens_nf1[j] <- (0.5*mu_F1[j]*mu_Sfj[j]+mu_Sfa[j]) -
-  #   (0.5*mu_Sfj[j]*(mu_F1[j]*mu_nf1[j]+mu_F2[j]*mu_nf2[j])+mu_Sfa[j]) 
-  # sens_nf2[j] <- (0.5*mu_F2[j]*mu_Sfj[j]+mu_Sfa[j]) -
-  #   (0.5*mu_Sfj[j]*(mu_F1[j]*mu_nf1[j]+mu_F2[j]*mu_nf2[j])+mu_Sfa[j])
-#}
-
-# Step 4: Calculate the LTRE contributions of temporal process (co)variation # in the demographic parameters to temporal variation in the realized population growth rates.
+## REVIEW: Does the code for calculating contribution make sense?
+# Calculate the contributions of temporal process variation and co-variations in the demographic parameters to temporal variation in the realized population growth rates.
 
 cont_SH_am <- cont_SN_am <- cont_SH_af <-cont_SN_af <- cont_SH_jm <- cont_SN_jm <- cont_SH_jf <- cont_SN_jf <- cont_R <-cont_N_HY_mal <-cont_N_AHY_mal <-cont_N_HY_fem <-cont_N_AHY_fem <- matrix(0,samples,1)
 
 for (j in 1:samples){
   dp_stoch <- cbind(SH.am[j,],SN.am[j,],SH.af[j,],SN.af[j,], SH.jm[j,], SN.jm[j,], SH.jf[j,], SN.jf[j,], R[j,],n.hy.fem[j,],n.ahy.fem[j,],n.hy.mal[j,], n.ahy.mal[j,])
-  # Derive process variance and covariance among demographic parameters using
-  # 'shrinkage' estimates of vital rates and proportionate abundances:
+
   dp_varcov <- var(dp_stoch)
   sensvec <- c(sens_SH_am[j], sens_SN_am[j], sens_SH_af[j], sens_SN_af[j], sens_SH_jm[j], sens_SN_jm [j], sens_SH_jf[j], sens_SN_jf[j], sens_R[j], sens_N_HY_fem[j], sens_N_AHY_fem[j], sens_N_HY_mal[j], sens_N_AHY_mal[j])
-  # calculate demographic contributions
   contmatrix <- matrix(0,13,13)
    for (k in 1:13){
      for (m in 1:13){
@@ -183,7 +126,7 @@ for (j in 1:samples){
   cont_N_AHY_mal[j] <- contributions[13]
 }
 
-# Step 5: Calculate desired statistics (e.g. the mean and Bayesian credible  # interval) from the derived posterior distributions of the LTRE contributions. The following is an example for the total contribution from all demographic parameters.
+# Calculate the mean and Bayesian credible intervals from the  posterior distributions of the LTRE contributions.
 totalcont <- cont_SH_am + cont_SN_am + cont_SH_af + cont_SN_af + cont_SH_jm + cont_SN_jm + cont_SH_jf + cont_SN_jf + cont_R + cont_N_HY_mal + cont_N_AHY_mal + cont_N_HY_fem + cont_N_AHY_fem
 mean(totalcont)
 quantile(totalcont,0.05)
@@ -203,12 +146,14 @@ cont.table <- cont.table %>%
 return(cont.table)
 }
 
-#Run tltre function for both species
+# Run tltre function for both species
 
 mall.cont.table <- tltre.fun(mall.ipm)
 agwt.cont.table <- tltre.fun(agwt.ipm)
 
-# Custom theme
+# Plotting contributions
+
+# Custom plotting theme
 theme_tltre <- function(){ theme(
   axis.text = element_text(size = 6),
   axis.title = element_text(size = 7),
@@ -222,7 +167,7 @@ theme_tltre <- function(){ theme(
 )
 }
 
-# Plotting
+# Plotting contributions separately
 mall.tltre.plot <- ggplot(mall.cont.table, aes(x = Parameter, y = Contribution)) +
   theme_tltre() +
   geom_col() +
@@ -232,7 +177,7 @@ mall.tltre.plot <- ggplot(mall.cont.table, aes(x = Parameter, y = Contribution))
 agwt.tltre.plot <- ggplot(agwt.cont.table, aes(x = Parameter, y = Contribution)) +
   theme_tltre() +
   geom_col() +
-  geom_linerange( aes(x=Parameter, ymin=Lower, ymax=Upper), colour="orange", alpha=0.9, linewidth=1.1)
+  geom_linerange( aes(x = Parameter, ymin = Lower, ymax = Upper), colour = "orange", alpha = 0.9, linewidth = 1.1)
 
 # ggsave("figures/agwt_contribution_plot_2005_2020.jpg", units="cm", width=8, height=7, dpi=600)
 
@@ -246,7 +191,7 @@ ggplot(cont.table, aes(x = Parameter, y = Contribution)) +
 theme(strip.text = element_text(size = 9)) +
   theme_tltre() +
   geom_col() +
-  geom_linerange( aes(x=Parameter, ymin=Lower, ymax=Upper), colour="orange", alpha=0.9, linewidth=0.5)+
+  geom_linerange( aes(x = Parameter, ymin = Lower, ymax = Upper), colour = "orange", alpha = 0.9, linewidth = 0.5)+
   facet_wrap(~Species, scales = "free_y")
 
 
@@ -256,6 +201,8 @@ ggsave("figures/contribution_plot_new_both.jpg", units="cm", width=9, height=7, 
 #########################################################################
 ####### contribution to differences in lambda in successive years #######
 #########################################################################
+## NOTE: Different way of evaluating contributions, also making it possible to look at 
+## how environmental covariates affect contributions
 # AGWT
 ipm <- agwt.ipm
 
@@ -293,6 +240,7 @@ mean.diff.lambda <- mean.diff.lambda %>%
 
 ggplot(mean.diff.lambda, aes(x = Year, y = lambda)) +
   geom_bar(stat = "identity")
+
 # Function to compute means over successive time steps, store them in a list
 getMn <- function(x) (x[,2:n.years] + x[,1:(n.years-1)]) / 2
 means <- list(SH.am=getMn(draws$SH.am), SN.am=getMn(draws$SN.am), SH.af=getMn(draws$SH.af), SN.af = getMn(draws$SN.af), SH.jm=getMn(draws$SH.jm), SN.jm=getMn(draws$SN.jm), SH.jf=getMn(draws$SH.jf), SN.jf=getMn(draws$SN.jf), R=getMn(draws$R), N_HY_fem = getMn(draws$N_HY_fem), N_AHY_fem = getMn(draws$N_AHY_fem), N_HY_mal = getMn(draws$N_HY_mal), N_AHY_mal = getMn(draws$N_AHY_mal))
@@ -345,8 +293,10 @@ mean.conts <- full_join(mean.conts, ci.conts.new, by = c("Year" = "Year", "Param
 
 # Load environmental covariates
 envi_cov <- readRDS("data/envi_cov.rda")
+
 # standardize precipitation in southern states
 prcp <- (envi_cov$avg_prcp-mean(envi_cov$avg_prcp))/sd(envi_cov$avg_prcp)
+
 # standardize average # of days where max temp below freezing from mid-latitude cities
 dx32 <- (envi_cov$avg_dx32_ml-mean(envi_cov$avg_dx32_ml))/sd(envi_cov$avg_dx32_ml)
 
@@ -357,9 +307,11 @@ ponds <- c(3508.5, 3200, 3608.9, 3611.7, 5984.8, 6335.4, 7482.2, 7458.2, 4586.9,
 ponds <- ponds[3:length(ponds)] 
 ponds.std <- (ponds-mean(ponds))/sd(ponds) # standardize
 
-# subset precip to 1992-2019
-prcp.new <- prcp[2:(length(prcp)-1)] 
-# prcp.new <- prcp[15:(length(prcp)-1)] 
+# subset precip to 1992-2019 for agwt
+prcp.new <- prcp[2:(length(prcp)-1)]
+
+# subset to 2005-2019 for mallard
+# prcp.new <- prcp[15:(length(prcp)-1)] # For mallard
 
 prcp.diff <- prcp.new[2:length(prcp.new)]-prcp.new[1:(length(prcp.new)-1)]
 
@@ -372,8 +324,8 @@ mean.conts.R <- cbind(mean.conts.R, Precipitation = prcp.diff)
 
 mean.conts.R <- cbind(mean.conts.R, SN.jf = mean.conts[mean.conts$Param == 'SN.jf',])
 
-pond.diff <- ponds.std[2:length(ponds.std)]-ponds.std[1:(length(ponds.std)-1)]
-#pond.diff <- ponds.std[15:length(ponds.std)]-ponds.std[14:(length(ponds.std)-1)]
+pond.diff <- ponds.std[2:length(ponds.std)]-ponds.std[1:(length(ponds.std)-1)] # For agwt
+#pond.diff <- ponds.std[15:length(ponds.std)]-ponds.std[14:(length(ponds.std)-1)] # For mallard
 
 mean.conts.R <- cbind(mean.conts.R, Ponds = pond.diff)
 
@@ -384,7 +336,7 @@ Rcont.precip <- ggplot(mean.conts.R, aes(x = Precipitation, y = Contribution)) +
   theme(axis.text.x = element_text(angle = 0), axis.text = element_text(size = 16), axis.title = element_text(size = 20)) +
   xlab(paste0('Interannual difference in winter ', '\n', 'precipitation in the south')) +
   ylab('Contribution of reproduction to population growth') +
-  annotate("text", x=-3.5, y=1, label= "A", size = 13) 
+  annotate("text", x=-3.5, y=1, label= "(b)", size = 13) 
 
   
 Rcont.ponds <- ggplot(mean.conts.R, aes(x = Ponds, y = Contribution)) +
@@ -394,10 +346,8 @@ Rcont.ponds <- ggplot(mean.conts.R, aes(x = Ponds, y = Contribution)) +
   theme(axis.text.x = element_text(angle = 0), axis.text = element_text(size = 16), axis.title = element_text(size = 20)) +
   xlab("Interannual difference in breeding habitat") +
   ylab('Contribution of reproduction to population growth') +
-  annotate("text", x=-2, y=1, label= "B", size = 13) 
+  annotate("text", x=-2, y=1, label= "(b)", size = 13) 
   
-
-
 Rcont.precip | Rcont.ponds
 
 ggsave('figures/agwt_Rcont_cov_relationship.jpg', width = 12, height = 8)

@@ -1,5 +1,12 @@
+##################################################
+### The purpose of this script is to load the data
+### needed to run the IPM for mallard and 
+### green-winged teal, run the model and plot the output
+### Last update date: 07/26/2024
+###################################################
+
 # Prepare packages
-list.of.packages <- c("stringr", "lubridate", "tidyverse", "rjags","jagsUI", "coda","parallel","doParallel", "foreach", "here", "MCMCvis", "ggplot2", "ggridges", "jagshelper", "GGally", "patchwork", "gridExtra", "ggpubr", "rphylopic", "ggdist")
+list.of.packages <- c("tidyverse", "rjags","jagsUI", "coda","parallel","doParallel", "foreach", "here", "MCMCvis", "ggridges", "jagshelper", "GGally", "patchwork", "gridExtra", "ggpubr", "rphylopic", "ggdist", "todor")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)){install.packages(new.packages)}
 lapply(list.of.packages, require, character.only = TRUE)
@@ -11,15 +18,15 @@ lapply(list.of.packages, require, character.only = TRUE)
 MALL.marray <- readRDS('data/MALL_marray_new.rda')
 MALL.release <- readRDS('data/MALL_release_new.rda')
 
-# # subset to years 2005-2020
+# # subset to years 2005-2020 for mallards
 MALL.marray <- MALL.marray[15:nrow(MALL.marray), 15:ncol(MALL.marray),,]
 MALL.release <- MALL.release[15:nrow(MALL.release),,]
 
-# # Green-winged Teal
+# Green-winged Teal
 # AGWT.release <- readRDS(file = "data/AGWT_release_new.rda")
 # AGWT.marray <- readRDS(file = "data/AGWT_marray_new.rda")
 
-# # Subset to 1992-2020
+# Subset to 1992-2020 for green-winged teal
 # AGWT.release <- AGWT.release[2:nrow(AGWT.release),,]
 # AGWT.marray <- AGWT.marray[2:nrow(AGWT.marray), 2:ncol(AGWT.marray),,]
 
@@ -44,33 +51,35 @@ y_tot <- y_tot[15:(length(y_tot)-1)]
 # y_tot <- y_tot[2:(length(y_tot)-1)]
 
 # load wing data (females)
-jf.wing <- readRDS(file = "data/MALL_juv_female_wing.rda")
-female.wing <- readRDS(file = "data/MALL_all_female_wing.rda")
+jf.wing <- readRDS(file = "data/MALL_juv_female_wing_new.rda")
+female.wing <- readRDS(file = "data/MALL_all_female_wing_new.rda")
 
-# jf.wing <- readRDS(file = "data/agwt_juv_female_wing.rda")
-# female.wing <- readRDS(file = "data/agwt_all_female_wing.rda")
+# jf.wing <- readRDS(file = "data/AGWT_juv_female_wing_new.rda")
+# female.wing <- readRDS(file = "data/AGWT_all_female_wing_new.rda")
 
 
 # Subset to 2005-2020 for MALL
-jf.wing <- jf.wing[15:(nrow(jf.wing)-1),]
-female.wing <- female.wing[15:(nrow(female.wing)-1),]
+# jf.wing <- jf.wing[15:nrow(jf.wing),]
+# female.wing <- female.wing[15:nrow(female.wing),]
 
-
-# # subset to year 1992-2020 for AGWT
-# jf.wing <- jf.wing[2:(nrow(jf.wing)-1),]
-# female.wing <- female.wing[2:(nrow(female.wing)-1),]
+# subset to year 1992-2020 for AGWT
+jf.wing <- jf.wing[2:nrow(jf.wing),]
+female.wing <- female.wing[2:nrow(female.wing),]
 
 # Load environmental covariates
 envi_cov <- readRDS("data/envi_cov.rda")
+
+## REVIEW: Please make sure we are aligning env cov years and population parameter years correctly
 # standardize precipitation in southern states
 prcp <- (envi_cov$avg_prcp-mean(envi_cov$avg_prcp))/sd(envi_cov$avg_prcp)
+
 # standardize average # of days where max temp below freezing from mid-latitude cities
 dx32 <- (envi_cov$avg_dx32_ml-mean(envi_cov$avg_dx32_ml))/sd(envi_cov$avg_dx32_ml)
 
 # May pond count estimates in thousands (1992-2019)
 ponds <- c(3608.9, 3611.7, 5984.8, 6335.4, 7482.2, 7458.2, 4586.9, 6704.3, 3946.9, 4640.4, 2720.0, 5190.1, 3919.6, 5381.2, 6093.9, 7002.7, 4431.4, 6434.0, 6665.0, 8132.2, 5544.0, 6891.7, 7181.2, 6307.7, 5012.5, 6096.0, 5227.4, 4990.3)
 
-# subset ponds to 2005-2019 for mallard
+# subset ponds to 2005-2019 for mallard (don't need to run for agwt)
 ponds <- ponds[14:length(ponds)]
 
 ponds.std <- (ponds-mean(ponds))/sd(ponds) # standardize
@@ -82,8 +91,8 @@ nClass <- dim(MALL.marray)[4]
 # nyrs <- dim(AGWT.marray)[1]
 # nClass <- dim(AGWT.marray)[4]
 
-bugs.data <- list(nyrs=dim(MALL.marray)[1], 
-                  #pre-hunting band-recoveries (2005-2020)
+bugs.data <- list(nyrs=dim(MALL.marray)[1],
+                  #pre-hunting band-recoveries (calendar year 2005-2020)
                   recovmat.am = MALL.marray[,,2,3], recovmat.af = MALL.marray[,,2,4], recovmat.jm = MALL.marray[,,2,1], recovmat.jf = MALL.marray[,,2,2]
                   #post-hunting band-recoveries (calendar year 2006-2020)
                   , recovmatP.am = MALL.marray[2:nyrs,2:(nyrs+1),1,3], recovmatP.af = MALL.marray[2:nyrs,2:(nyrs+1),1,4], recovmatP.jm = MALL.marray[2:nyrs,2:(nyrs+1),1,1], recovmatP.jf = MALL.marray[2:nyrs,2:(nyrs+1),1,2]
@@ -103,33 +112,33 @@ bugs.data <- list(nyrs=dim(MALL.marray)[1],
                   , prev.prcp = prcp[14:(length(prcp)-1)], prev.dx32 = dx32[14:(length(dx32)-1)]
 )
 
-bugs.data <- list(nyrs=dim(AGWT.marray)[1],
-                  #pre-hunting band-recoveries (1992-2020)
-                  recovmat.am = AGWT.marray[,,2,3], recovmat.af = AGWT.marray[,,2,4], recovmat.jm = AGWT.marray[,,2,1], recovmat.jf = AGWT.marray[,,2,2]
-                  #post-hunting band-recoveries (calendar year 1993-2020)
-                  , recovmatP.am = AGWT.marray[2:nyrs,2:(nyrs+1),1,3], recovmatP.af = AGWT.marray[2:nyrs,2:(nyrs+1),1,4], recovmatP.jm = AGWT.marray[2:nyrs,2:(nyrs+1),1,1], recovmatP.jf = AGWT.marray[2:nyrs,2:(nyrs+1),1,2]
-                  #pre-hunting total bandings
-                  , relmat.am = AGWT.release[,2,3], relmat.af = AGWT.release[,2,4], relmat.jm = AGWT.release[,2,1], relmat.jf = AGWT.release[,2,2]
-                  #post-hunting total bandings
-                  , relmatP.am = AGWT.release[2:nyrs,1,3], relmatP.af = AGWT.release[2:nyrs,1,4], relmatP.jm = AGWT.release[2:nyrs,1,1], relmatP.jf = AGWT.release[2:nyrs,1,2]
-                  # wing data
-                  , W.jv = jf.wing$Number, W.tot = female.wing$sum
-                  #Bpop estimates
-                  , y_t = y_tot, begin.esa.year = min(which(y_esa!=0))
-                  # envi cov
-                  , prcp = prcp[2:length(prcp)], dx32 = dx32[2:length(dx32)]
-                  , ponds = c(ponds.std,NA)
-                  # envi cov from previous year
-                  , prev.prcp = prcp[1:length(prcp)-1], prev.dx32 = dx32[1:length(dx32)-1]
-                  )
+# bugs.data <- list(nyrs=dim(AGWT.marray)[1],
+#                   #pre-hunting band-recoveries (calendar year 1992-2020)
+#                   recovmat.am = AGWT.marray[,,2,3], recovmat.af = AGWT.marray[,,2,4], recovmat.jm = AGWT.marray[,,2,1], recovmat.jf = AGWT.marray[,,2,2]
+#                   #post-hunting band-recoveries (calendar year 1993-2020)
+#                   , recovmatP.am = AGWT.marray[2:nyrs,2:(nyrs+1),1,3], recovmatP.af = AGWT.marray[2:nyrs,2:(nyrs+1),1,4], recovmatP.jm = AGWT.marray[2:nyrs,2:(nyrs+1),1,1], recovmatP.jf = AGWT.marray[2:nyrs,2:(nyrs+1),1,2]
+#                   #pre-hunting total bandings
+#                   , relmat.am = AGWT.release[,2,3], relmat.af = AGWT.release[,2,4], relmat.jm = AGWT.release[,2,1], relmat.jf = AGWT.release[,2,2]
+#                   #post-hunting total bandings
+#                   , relmatP.am = AGWT.release[2:nyrs,1,3], relmatP.af = AGWT.release[2:nyrs,1,4], relmatP.jm = AGWT.release[2:nyrs,1,1], relmatP.jf = AGWT.release[2:nyrs,1,2]
+#                   # wing data
+#                   , W.jv = jf.wing$Number, W.tot = female.wing$sum
+#                   #Bpop estimates
+#                   , y_t = y_tot, begin.esa.year = min(which(y_esa!=0))
+#                   # envi cov
+#                   , prcp = prcp[2:length(prcp)], dx32 = dx32[2:length(dx32)]
+#                   , ponds = c(ponds.std,NA)
+#                   # envi cov from previous year
+#                   , prev.prcp = prcp[1:length(prcp)-1], prev.dx32 = dx32[1:length(dx32)-1]
+#                   )
 
 # Initial values
 inits <- function(){list(f.am=runif(nyrs,0,0.5),f.af=runif(nyrs,0,0.5),f.jm=runif(nyrs,0,0.5),f.jf=runif(nyrs,0,0.5)
                          , beta = rnorm(1, 0, 1)
                          # initial pop for mallard
-                         , n_HY_mal = runif(1, 0, 50), n_AHY_mal = runif(1, 0, 50), n_HY_fem = runif(1, 0, 50), n_AHY_fem = runif(1, 0, 50)
+                         # , n_HY_mal = runif(1, 0, 50), n_AHY_mal = runif(1, 0, 50), n_HY_fem = runif(1, 0, 50), n_AHY_fem = runif(1, 0, 50)
                         # initial pop for agwt
-                           #, n_HY_mal = runif(1, 0, 200), n_AHY_mal = runif(1, 0, 200), n_HY_fem = runif(1, 0, 200), n_AHY_fem = runif(1, 0, 200)
+                           , n_HY_mal = runif(1, 0, 200), n_AHY_mal = runif(1, 0, 200), n_HY_fem = runif(1, 0, 200), n_AHY_fem = runif(1, 0, 200)
                           , alpha_prcp = rnorm(4, 0, 0.37), alpha_dx32 = rnorm(4, 0, 0.37)
                          , beta_pond = rnorm(1, 0, 0.01), beta_prcp = rnorm(1, 0, 0.01), beta_dx32 = rnorm(1, 0, 0.01)
                           ,gamma_prcp = rnorm(4, 0, 0.37), gamma_dx32 = rnorm(4, 0, 0.37)
@@ -151,21 +160,20 @@ parameters <- c("SH.am", "SN.am", "SH.af", "SN.af", "SH.jm", "SN.jm", "SH.jf", "
 ni <- 300
 nt <- 1
 nb <- 100
-nc <- 1
+nc <- 3
 na <- 1000
 
 # Run model
 ## MALL
 mall.ipm <- jagsUI(bugs.data, inits=inits, parameters, "mall_agwt_ipm_clean.jags", n.adapt = na, n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, parallel=TRUE, store.data=TRUE)
-
-# Save model output
-# saveRDS(mall.ipm, "output/mall_ipm_2005-2020_output.rda")
-
+ 
+# # Save model output
+# saveRDS(mall.ipm, "mall_ipm_2005-2020_output.rda")
 
 ## AGWT
 agwt.ipm <- jagsUI(bugs.data, inits=inits, parameters, "mall_agwt_ipm_clean.jags", n.adapt = na, n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, parallel=TRUE, store.data=TRUE)
 
-# saveRDS(agwt.ipm, 'output/agwt_ipm_1992_2020_output.rda')
+# saveRDS(agwt.ipm, 'agwt_ipm_1992_2020_output.rda')
 
 
 # # Grab specific parameter output from models
@@ -182,8 +190,8 @@ agwt.ipm <- jagsUI(bugs.data, inits=inits, parameters, "mall_agwt_ipm_clean.jags
 
 #------Plotting model results--------
 ## Load model output (if needed)
-mall.ipm <- readRDS("output/mall_ipm_2005-2020_output.rda")
-agwt.ipm <- readRDS("output/agwt_ipm_1992_2020_output.rda")
+mall.ipm <- readRDS("mall_ipm_2005-2020_output.rda")
+agwt.ipm <- readRDS("agwt_ipm_1992_2020_output.rda")
 
 # Set color palette
 cbbPalette <- c("#E69F00","#009E73", "#CC79A7","#F0E442", "#0072B2", "#D55E00")
@@ -373,12 +381,12 @@ sp.col <- c("Dark green", "Chocolate4")
 R.out <- data.frame(cbind(Year = 1992:2020, Species = c(rep(c("Mallard", "Green-winged Teal"), each = length(agwt.ipm$mean$R))), R.mean = c(rep(NA, 13), mall.ipm$mean$R, agwt.ipm$mean$R), R.lower = c(rep(NA, 13), mall.ipm$q2.5$R, agwt.ipm$q2.5$R), R.upper = c(rep(NA, 13), mall.ipm$q97.5$R, agwt.ipm$q97.5$R)))
 
 R.out <- R.out %>% 
-  mutate_at(c('R.mean', 'R.lower', 'R.upper'), as.numeric)
+  mutate_at(c('Year', 'R.mean', 'R.lower', 'R.upper'), as.numeric)
 
 # Plot
 R.plot <- ggplot(R.out, aes(x = Year, y = R.mean, group = Species, fill = Species)) +
-  add_phylopic(img = agwt.img, color = "black", x = 26, y = 6, ysize = 2) +
-  add_phylopic(img = mall.img, color = "black", x = 26, y = 0.35, ysize = 1.5) +
+  # add_phylopic(img = agwt.img, color = "black", x = 26, y = 6, ysize = 2) +
+  # add_phylopic(img = mall.img, color = "black", x = 26, y = 0.35, ysize = 1.5) +
   geom_line(aes(color = Species), size = 0.5) +
   geom_ribbon(aes(ymin = R.lower, ymax = R.upper), alpha = 0.3) +
   theme_recruit() +

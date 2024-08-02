@@ -1,6 +1,19 @@
-library(tidyverse)
-library(GGally)
-library(rnoaa)
+##################################################
+### The purpose of this script is to format environmental 
+### covariate data and save the formatted output
+### to be used in the IPM
+### Last update date: 07/26/2024
+###################################################
+
+# Prepare packages
+list.of.packages <- c("tidyverse", "GGaly", "rnoaa", "todor")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)){install.packages(new.packages)}
+lapply(list.of.packages, require, character.only = TRUE)
+
+#######################################
+###### Loading all climate data ####### 
+#######################################
 
 # Load climate data by state
 ga.dat <- read.csv("raw_dat/environmental_covariates/GA_ClimDat.csv")
@@ -20,14 +33,24 @@ az.dat <- read.csv("raw_dat/environmental_covariates/AZ_ClimDat.csv")
 ok.dat <- read.csv("raw_dat/environmental_covariates/OK_ClimDat.csv")
 ks.dat <- read.csv("raw_dat/environmental_covariates/KS_ClimDat.csv")
 
-
-# Climate data from mid-latitute cities
+# Climate data from mid-latitude cities
 chicago <- read.csv("raw_dat/environmental_covariates/Chicago.csv")
 nplatte <- read.csv("raw_dat/environmental_covariates/NorthPlatte.csv")
 desmoines <- read.csv("raw_dat/environmental_covariates/DesMoines.csv")
 cleveland <- read.csv("raw_dat/environmental_covariates/Cleveland.csv")
 
-# Combine all
+# Palmer drought severity index
+pdsi <- read.csv("raw_dat/environmental_covariates/PDSI.csv")
+
+# NAO
+nao <- read.csv("raw_dat/environmental_covariates/NAO.csv")
+
+#############################
+####### Data processing #####
+#############################
+## REVIEW: When reviewing this code, I realized that a lot of the code was for data exploration and the data contained in the 'winter' object are not the data we are using in the model, since it contains data from all southern states. We further subset the data down to one weather station from each state (i.e., the winter.new object below). That said, should we still keep all of the code?
+
+# Combine all state climate data
 dat <- rbind(ga.dat, fl.dat, sc.dat, nc.dat, tn.dat, al.dat, ms.dat, ar.dat, la.dat, tx.dat, ky.dat, mo.dat, nm.dat, az.dat, ok.dat, ks.dat)
 
 # Weather stations in Mexico
@@ -57,14 +80,14 @@ dat <- dat[dat$STATE%in%states, ]
 # PRCP: monthly amount of precipitation (in)
 winter <- dat %>%
               select(STATION, NAME, DT32, DX32, PRCP, YEAR, MONTH, STATE) %>%
-              filter(MONTH%in%c("01", "09", "10", "11", "12"))
+              filter(MONTH %in% c("01", "09", "10", "11", "12"))
 
 winter$YEAR <- as.numeric(winter$YEAR)
 
 # January of following year are considered part of the previous winter
 year.new <- rep(NA, nrow(winter))
 for(i in 1:nrow(winter)){
-  year.new[i] <- ifelse(winter$MONTH[i]%in%c("01"), winter[i,6]-1, winter[i,6])
+  year.new[i] <- ifelse(winter$MONTH[i] %in% c("01"), winter[i,6]-1, winter[i,6])
 }
 
 # Incorporate newly assigned year to dataframe
@@ -78,8 +101,10 @@ winter <- winter %>%
   mutate_if(is.integer, as.numeric)
 
 winter$Sum_mo <- rowSums(winter[,3:ncol(winter)])
+
+# Checking if there are months with missing data
 winter <- winter %>% 
-          filter(Sum_mo==150)
+          filter(Sum_mo == 150)
 
 # Winter precipitation table
 # winter.prcp <- winter %>% 
@@ -133,32 +158,32 @@ winter <- winter %>%
 #   full_join(winter.dx32[,c(1:2,33)], by = "NAME") %>% 
 #   filter(Sum_mo==180 & Sum_mo.x==180 & Sum_mo.y==180)
 
+# Weather stations from which we want to keep the climate data
 stations <- c("MACON MIDDLE GA REGIONAL AIRPORT, GA US", "ORLANDO INTERNATIONAL AIRPORT, FL US", "COLUMBIA METROPOLITAN AIRPORT, SC US", "SALISBURY 9 WNW, NC US", "MURFREESBORO 5 N, TN US", "BIRMINGHAM AIRPORT, AL US", "JACKSON INTERNATIONAL AIRPORT, MS US", "LITTLE ROCK AIRPORT ADAMS FIELD, AR US", "ALEXANDRIA, LA US","ABILENE REGIONAL AIRPORT, TX US","LEXINGTON BLUEGRASS AIRPORT, KY US", "ROLLA MISSOURI S AND T, MO US", "ALBUQUERQUE INTERNATIONAL AIRPORT, NM US", "PHOENIX AIRPORT, AZ US","OKLAHOMA CITY WILL ROGERS WORLD AIRPORT, OK US", "HUTCHINSON 10 SW, KS US")
 
-
-
+## REVIEW: Please review whether the year assignment of environmental covariate data make sense. Are we matching the covariate data from the correct year with the correct survival estimates?
 winter.new <- dat %>% 
-              filter(NAME%in%stations & MONTH%in%w.months) %>% 
+              filter(NAME %in% stations & MONTH %in% w.months) %>% 
               mutate_at("YEAR", as.numeric) %>% 
-              mutate(YEAR2 = case_when(MONTH%in%c("01") ~ YEAR-1,
+              # Data from January is still considered winter of the previous year
+              mutate(YEAR2 = case_when(MONTH %in% c("01") ~ YEAR-1,
                                        TRUE ~ YEAR)) %>% 
-              filter(!(YEAR2%in%c(1990, 2021)))
+              filter(!(YEAR2 %in% c(1990, 2021)))
 
 avg <- winter.new %>% 
           group_by(YEAR2) %>% 
           summarise(avg_prcp = mean(PRCP), avg_dt32 = mean(DT32), avg_dx32 = mean(DX32))
 
-# Palmer drought severity index
-
-pdsi <- read.csv("raw_dat/environmental_covariates/PDSI.csv")
+# Format PDSI data
 pdsi$Year <- str_sub(pdsi$ID, -4, -1)
 pdsi$Year <- as.numeric(pdsi$Year)
 
 years <- c(1991:2021)
 pdsi.new <- pdsi %>% 
   select(State, Year, January, September:December) %>% 
-  filter(Year%in%years & State %in%states) %>% 
+  filter(Year %in% years & State %in% states) %>% 
   group_by(State) %>% 
+  ## NOTE: Same as other envi covs above, January of following year is part of the winter of previous year
   mutate(January = lead(January, order_by = State))
 
 mean.pdsi <- pdsi.new %>% 
@@ -170,23 +195,24 @@ mean.pdsi <- cbind(mean.pdsi, Mean.pdsi = rowMeans(mean.pdsi[,2:6]))
 mean.pdsi <- mean.pdsi[complete.cases(mean.pdsi),]
 #mean.pdsi <- mean.pdsi[1:nrow(mean.pdsi)-1,]
 
-# NAO
-nao <- read.csv("raw_dat/environmental_covariates/NAO.csv")
-
+# Format NAO data
 # subset from 1991-2021
 nao <- nao %>% 
-        filter(Year%in%years)
+        filter(Year %in% years)
 
+# Winter months are Sept - Jan
 nao.jan <- nao %>% 
   select(January)
 
 nao.sepdec <- nao %>% 
   select(Year,September:December)
 
+## NOTE: lead(nao.jan) shifts January data to the previous year
 nao.new <- cbind(nao.sepdec, lead(nao.jan))
 
 mean.nao <- cbind(nao.new, Mean.nao = rowMeans(nao.new[,2:6]))
 
+## 2021 is missing data from January, so remove that year (which is not needed for the model)
 mean.nao <- mean.nao[complete.cases(mean.nao),]
 #mean.nao <- mean.nao[1:nrow(mean.nao)-1,]
 
@@ -200,16 +226,17 @@ midlat$STATE <- str_sub(midlat$NAME, -5, -4)
 midlat$YEAR <- as.numeric(midlat$YEAR)
 midlat <- midlat %>%
   select(STATION, NAME, DT32, DX32, PRCP, SNOW, YEAR, MONTH, STATE) %>%
-  filter(MONTH%in%c("01", "09", "10", "11", "12"))
+  filter(MONTH %in% c("01", "09", "10", "11", "12"))
 
 
 midlat.new <- midlat %>% 
-  filter(MONTH%in%w.months) %>% 
+  filter(MONTH %in% w.months) %>% 
   mutate_at("YEAR", as.numeric) %>% 
-  mutate(YEAR2 = case_when(MONTH%in%c("01") ~ YEAR-1,
+  mutate(YEAR2 = case_when(MONTH %in% c("01") ~ YEAR-1,
                            TRUE ~ YEAR)) %>% 
-  filter(!(YEAR2%in%c(1989, 1990, 2021, 2022)))
+  filter(!(YEAR2 %in% c(1989, 1990, 2021, 2022))) # Only need data from 1991 - 2020
 
+## REVIEW: there is one month from one of the weather stations missing snow data. So we exclude that month when we take the average.  
 midlat %>% filter(if_any(everything(), is.na)) # Only one row contains NA: Chicago Midway Airport snow record September 2012
 
 midlat.avg <- midlat.new %>% 
@@ -230,6 +257,6 @@ ponds.std <- (ponds-mean(ponds))/sd(ponds)
 # correlation between envi covs (without ponds)
 ggpairs(new.dat[,2:ncol(new.dat)])
 
-# correlation with ponds (off set by one year because want to see whether winter conditions from previous year are correlated with pond counts of following year)
+# NOTE: correlation with ponds (off set by one year because want to see whether winter conditions from previous year are correlated with pond counts of following year)
 new.dat2 <- cbind(new.dat, ponds = c(ponds.std[2:length(ponds.std)], NA))
 ggpairs(new.dat2)

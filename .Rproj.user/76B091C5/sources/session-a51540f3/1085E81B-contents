@@ -196,8 +196,8 @@ beta_prcp ~ dnorm(0, 0.01)
 beta_dx32 ~ dnorm(0, 0.01)
 
 # priors for missing pond count in 2020
-# ponds[16] ~ dnorm(0, 1) # for mallard
-ponds[29] ~ dnorm(0, 1) # for agwt
+ponds[16] ~ dnorm(0, 1) # for mallard
+# ponds[29] ~ dnorm(0, 1) # for agwt
 
 # Likelihood
   for (t in 1:nyrs){
@@ -215,8 +215,8 @@ ponds[29] ~ dnorm(0, 1) # for agwt
 ################################
 
 # Priors
-  sig.t ~ dgamma(3.5,0.05) #agwt
-  # sig.t ~ dgamma(15, 0.1) #mall
+  # sig.t ~ dgamma(3.5,0.05) #agwt
+  sig.t ~ dgamma(15, 0.1) #mall
   sig2.t <- pow(sig.t, 2)
   tau.t <- pow(sig.t, -2)
   # Prior for latent Bpop size for eastern survey area prior to 1998
@@ -264,16 +264,16 @@ ponds[29] ~ dnorm(0, 1) # for agwt
 
   # Observation process
   ## Years prior to beginning of eastern survey area surveys
-   for(t in 1:(begin.esa.year-1)){ # Comment this for loop if running mallard model
-   y_t[t] ~ dnorm(N_tot[t] + delta, tau.t)
-   }
+   # for(t in 1:(begin.esa.year-1)){ # Comment this for loop if running mallard model
+   # y_t[t] ~ dnorm(N_tot[t] + delta, tau.t)
+   # }
   ## Years after eastern survey area surveys began
-  for(t in begin.esa.year:nyrs){ # Comment this out if running mallard model
-  # for(t in 1:nyrs){ # Comment this out if running agwt model
+  # for(t in begin.esa.year:nyrs){ # Comment this out if running mallard model
+  for(t in 1:nyrs){ # Comment this out if running agwt model
   y_t[t] ~ dnorm(N_tot[t], tau.t)
   }
 
   } # end model
 
 ## Literature on which the dead-recovery model is adapted:
-# Devers, P. K., R. L. Emmet, G. S. Boomer, G. S. Zimmerman, and J. A. Royle. 2021. “Evaluation of a Two-Season Banding Program to Estimate and Model Migratory Bird Survival.” Ecological Applications 31: 1–18.
+# Devers, P. K., R. L. Emmet, G. S. Boomer, G. S. Zimmerman, and J. A. Royle. 2021. âEvaluation of a Two-Season Banding Program to Estimate and Model Migratory Bird Survival.â Ecological Applications 31: 1â18.

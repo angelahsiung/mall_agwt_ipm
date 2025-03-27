@@ -1,0 +1,26 @@
+{
+    "id": "F49F4F9E",
+    "path": "~/GitHub/mall_agwt_ipm/02_envi_cov_data_formatting.R",
+    "project_path": "02_envi_cov_data_formatting.R",
+    "type": "r_source",
+    "hash": "3505009328",
+    "contents": "",
+    "dirty": false,
+    "created": 1731429077024.0,
+    "source_on_save": false,
+    "relative_order": 6,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "7,18",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1722608967,
+    "encoding": "ISO8859-1",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1722608967,
+    "read_only": false,
+    "read_only_alternatives": []
+}

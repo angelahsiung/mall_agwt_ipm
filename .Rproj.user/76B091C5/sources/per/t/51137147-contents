@@ -9,15 +9,15 @@
 ## am = adult male, af = adult female, jm = juvenile male, jf = juvenile female. 
 
 	for(t in 1:(nyrs-1)){		
-		muN.am[t] ~ dnorm(0, 1.51) 
-		muN.af[t] ~ dnorm(0, 1.51)  
-		muN.jm[t] ~ dnorm(0, 1.51) 
-		muN.jf[t] ~ dnorm(0, 1.51) 
+		muN.am[t] ~ dnorm(0, 1.51) #dnorm(0, 0.444) 
+		muN.af[t] ~ dnorm(0, 1.51) #dnorm(0, 0.444)  
+		muN.jm[t] ~ dnorm(0, 1.51) #dnorm(0, 0.444) 
+		muN.jf[t] ~ dnorm(0, 1.51) #dnorm(0, 0.444) 
 
-		muH.am[t] ~ dnorm(0, 1.51) 
-		muH.af[t] ~ dnorm(0, 1.51) 
-		muH.jm[t] ~ dnorm(0, 1.51) 
-		muH.jf[t] ~ dnorm(0, 1.51) 
+		muH.am[t] ~ dnorm(0, 1.51) #dnorm(0, 0.444) 
+		muH.af[t] ~ dnorm(0, 1.51) #dnorm(0, 0.444) 
+		muH.jm[t] ~ dnorm(0, 1.51) #dnorm(0, 0.444) 
+		muH.jf[t] ~ dnorm(0, 1.51) #dnorm(0, 0.444) 
 
 	}
 
@@ -32,8 +32,8 @@
 # Priors for environmental covariate coefficients
 ## alphas are for fall/winter survival, gammas are for spring/summer survival
 for(i in 1:4){
-alpha_prcp[i] ~ dnorm(0, 0.37)
-alpha_dx32[i] ~ dnorm(0, 0.37)
+alpha_prcp[i] ~ dnorm(0, 0.37) 
+alpha_dx32[i] ~ dnorm(0, 0.37) 
 gamma_prcp[i] ~ dnorm(0, 0.37)
 gamma_dx32[i] ~ dnorm(0, 0.37)
 }
@@ -196,8 +196,8 @@ beta_prcp ~ dnorm(0, 0.01)
 beta_dx32 ~ dnorm(0, 0.01)
 
 # priors for missing pond count in 2020
-ponds[16] ~ dnorm(0, 1) # for mallard
-# ponds[29] ~ dnorm(0, 1) # for agwt
+#ponds[16] ~ dnorm(0, 1) # for mallard
+ponds[29] ~ dnorm(0, 1) # for agwt
 
 # Likelihood
   for (t in 1:nyrs){
@@ -215,8 +215,8 @@ ponds[16] ~ dnorm(0, 1) # for mallard
 ################################
 
 # Priors
-  # sig.t ~ dgamma(3.5,0.05) #agwt
-  sig.t ~ dgamma(15, 0.1) #mall
+  sig.t ~ dgamma(2, 0.05) #agwt
+  # sig.t ~ dgamma(15, 0.1) #mall
   sig2.t <- pow(sig.t, 2)
   tau.t <- pow(sig.t, -2)
   # Prior for latent Bpop size for eastern survey area prior to 1998
@@ -224,15 +224,15 @@ ponds[16] ~ dnorm(0, 1) # for mallard
 
   # initial population size (tsa = traditional survey area, esa = eastern survey area)
   ##### initial population for MALL
-  n_HY_fem ~ dnorm(700*0.4*0.45,0.0005)I(0,) #juvenile female
-  n_HY_mal ~ dnorm(700*0.4*0.55,0.0005)I(0,)  #juvenile male
-  n_AHY_fem ~  dnorm(700*0.6*0.27,0.0005)I(0,) #adult female
-  n_AHY_mal ~ dnorm(700*0.6*0.73,0.0005)I(0,) #adult male
+  #n_HY_fem ~ dnorm(700*0.4*0.45,0.0005)I(0,) #juvenile female
+  #n_HY_mal ~ dnorm(700*0.4*0.55,0.0005)I(0,)  #juvenile male
+  #n_AHY_fem ~  dnorm(700*0.6*0.27,0.0005)I(0,) #adult female
+  #n_AHY_mal ~ dnorm(700*0.6*0.73,0.0005)I(0,) #adult male
   ##### initial population for AGWT
-  #n_HY_fem ~ dnorm(50, 0.0016)I(0,) #juvenile female
-  #n_HY_mal ~  dnorm(50, 0.0016)I(0,) #juvenile male
-  #n_AHY_fem ~ dnorm(50, 0.0016)I(0,) #adult female
-  #n_AHY_mal ~ dnorm(50, 0.0016)I(0,) #adult male
+  n_HY_fem ~ dnorm(50, 0.0016)I(0,) #juvenile female
+  n_HY_mal ~  dnorm(50, 0.0016)I(0,) #juvenile male
+  n_AHY_fem ~ dnorm(50, 0.0016)I(0,) #adult female
+  n_AHY_mal ~ dnorm(50, 0.0016)I(0,) #adult male
 
   N_HY_fem[1] <- round(n_HY_fem)
   N_AHY_fem[1] <- round(n_AHY_fem)
@@ -243,8 +243,8 @@ ponds[16] ~ dnorm(0, 1) # for mallard
   # state process
   for(t in 2:nyrs){
   # Popluation size during the summer (Bpop survey)
-  N_HY_mal[t] <- (N_HY_fem[t-1] + N_AHY_fem[t-1])*R[t-1]*SH.jm[t-1]*(SN.jm[t-1]^0.25)
-  N_HY_fem[t] <- (N_HY_fem[t-1] + N_AHY_fem[t-1])*R[t-1]*SH.jf[t-1]*(SN.jf[t-1]^0.25)
+  N_HY_mal[t] <- (N_HY_fem[t-1] + N_AHY_fem[t-1])*R[t-1]*SH.jm[t-1]*(SN.jm[t-1]^0.375)
+  N_HY_fem[t] <- (N_HY_fem[t-1] + N_AHY_fem[t-1])*R[t-1]*SH.jf[t-1]*(SN.jf[t-1]^0.375)
 
   N_AHY_mal[t] <- (N_HY_mal[t-1] + N_AHY_mal[t-1])*S.am[t-1] 
   N_AHY_fem[t] <- (N_HY_fem[t-1] + N_AHY_fem[t-1])*S.af[t-1] 
@@ -264,12 +264,12 @@ ponds[16] ~ dnorm(0, 1) # for mallard
 
   # Observation process
   ## Years prior to beginning of eastern survey area surveys
-   # for(t in 1:(begin.esa.year-1)){ # Comment this for loop if running mallard model
-   # y_t[t] ~ dnorm(N_tot[t] + delta, tau.t)
-   # }
+  for(t in 1:(begin.esa.year-1)){ # Comment this for loop if running mallard model
+  y_t[t] ~ dnorm(N_tot[t] + delta, tau.t)
+  }
   ## Years after eastern survey area surveys began
-  # for(t in begin.esa.year:nyrs){ # Comment this out if running mallard model
-  for(t in 1:nyrs){ # Comment this out if running agwt model
+   for(t in begin.esa.year:nyrs){ # Comment this out if running mallard model
+  # for(t in 1:nyrs){ # Comment this out if running agwt model
   y_t[t] ~ dnorm(N_tot[t], tau.t)
   }
 

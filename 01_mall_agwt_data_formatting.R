@@ -3,7 +3,7 @@
 ### harvested wings, and Bpop data for the IPM. The code in this
 ### script is for formatting both mallard and green-winged teal data. 
 ### To run code for each species, comment out the code for the other.
-### Date last updated: 07/26/2024
+### Date last updated: 03/04/2025
 ##############################################################
 
 # Prepare packages
@@ -14,20 +14,14 @@ if (length(new.packages)) {
 }
 lapply(list.of.packages, require, character.only = TRUE)
 
-# Run code for review
-todor(
-  todo_types = NULL,
-  search_path = getwd(),
-  # file = "mall_agwt_data_formatting.R",
-  output = "markers"
-)
-
 # Read in banding (and recovery) data
-# Mallard
-# mall.bandings <- read.csv("raw_dat/GameBirds_MALL_Bandings_1991_2021.csv")
-# mall.recov <- read.csv("raw_dat/GameBirds_MALL_B1991_R1991_2021.csv") ## NOTE: May need to extract this file first before loading it into R. Had to compress it before uploading it on Github because it was too big
+## NOTE: The bandings and band recoveries were obtained from the GameBirds software by searching for mallard and green-winged teal bands that were released and recovered between 1991 and 2021
 
-# Green-winged teal
+# Mallard band data
+mall.bandings <- read.csv("raw_dat/GameBirds_MALL_Bandings_1991_2021.csv")
+mall.recov <- read.csv("raw_dat/GameBirds_MALL_B1991_R1991_2021.csv") ## NOTE: May need to extract this file first before loading it into R. Had to compress it before uploading it on Github because it was too big
+
+# Green-winged teal band data
 agwt.recov <- read.csv("raw_dat/GameBirds_AGWT_B1991_R1991_2021.csv")
 agwt.bandings <- read.csv("raw_dat/GameBirds_AGWT_1991_2021_bandings.csv")
 
@@ -36,8 +30,8 @@ agwt.bandings <- read.csv("raw_dat/GameBirds_AGWT_1991_2021_bandings.csv")
 #######################################
 
 # Only using status 3 birds
-# recov <- mall.recov[mall.recov$Status == 3, ]
-recov <- agwt.recov[agwt.recov$Status==3,]
+recov <- mall.recov[mall.recov$Status == 3, ]
+recov <- agwt.recov[agwt.recov$Status == 3,]
 
 # Subset birds recovered before 2021
 recov <- recov[recov$R.Year < 2021, ]
@@ -76,12 +70,9 @@ recov <- recov[recov$B.Month %in% c(2:3, 7:9), ]
 recov <- recov[recov$R.Month %in% c(1, 9:12), ]
 
 # Subset data from Atlantic, Mississippi and Central flyways, and corresponding provinces in CA
-## REVIEW: Does this subsetting make sense? Would this be excluding birds banded in Canada and recovered in the US and vise versa?
-recov.US <- recov[recov$R.Flyway %in% c(1:3) & recov$B.Flyway %in% c(1:3), ]
-recov.CA <- recov[recov$R.Flyway == 6 & recov$RRegion..STA %in% c("NS", "NB", "PE", "LAB", "PQ", "ONT", "MAN", "SK", "AB", "NU", "NT") &
-  recov$B.Flyway == 6 & recov$BRegion..STA %in% c("NS", "NB", "PE", "LAB", "PQ", "ONT", "MAN", "SK", "AB", "NU", "NT"), ] # Nova Scotia, New Brunswick, Prince Edward Island, Newfoundland and Labrador, Quebec, Ontario, Manitoba, Alberta, Saskatchewan, Nunavut, Northwest territories
-
-recov <- rbind(recov.US, recov.CA)
+recov <- recov %>% 
+  filter(R.Flyway %in% c(1:3) | RRegion..STA %in% c("NS", "NB", "PE", "LAB", "PQ", "ONT", "MAN", "SK", "AB", "NU", "NT")) %>% # Nova Scotia, New Brunswick, Prince Edward Island, Newfoundland and Labrador, Quebec, Ontario, Manitoba, Alberta, Saskatchewan, Nunavut, Northwest territories
+  filter(B.Flyway %in% c(1:3) | BRegion..STA %in% c("NS", "NB", "PE", "LAB", "PQ", "ONT", "MAN", "SK", "AB", "NU", "NT"))
 
 # Get rid of unknown age at banding
 recov <- recov[recov$Age..VAGE != "Unknown", ]
@@ -111,7 +102,6 @@ clean[recov$R.Month >= 2, 3] <- recov[recov$R.Month >= 2, "R.Year"]
 clean[recov$R.Month < 2, 3] <- recov[recov$R.Month < 2, "R.Year"] - 1
 
 # Bring in age
-## REVIEW: Does age assignment makes sense based on the age in teh data and the month the bird was banded
 clean[, 4] <- NA
 clean[recov$Age..VAGE == "Local" | recov$Age..VAGE == "Hatch Year", 4] <- 1 # 1 indicates juvenile
 clean[recov$Age..VAGE == "After Hatch Year" & recov$B.Month %in% c(2:3), 4] <- 1 # AHY banded post-season is considered juvenile
@@ -160,7 +150,6 @@ colnames(clean) <- c("BSeason", "BYear", "RYear", "Age", "Class", "Dummy")
 ##################################
 ######## Creating m-array ########
 ##################################
-## REVIEW: Make sure indexing is correct in the marray
 
 Year <- sort(unique(clean$BYear))
 nYear <- length(Year)
@@ -206,7 +195,7 @@ View(marray[1:nYear, 1:nYear, 2, 4]) # adult female banded in Jul-Sep
 ########################################
 
 # Only using status 3 birds
-# band <- mall.bandings[mall.bandings$Status == 3, ]
+band <- mall.bandings[mall.bandings$Status == 3, ]
 band <- agwt.bandings[agwt.bandings$Status==3,]
 
 # Subset birds banded before 2021
@@ -218,10 +207,8 @@ band <- band[band$B.Month %in% c(2:3, 7:9), ]
 
 # Subset data from Atlantic and Mississippi flyways, and corresponding provinces in CA
 
-band.US <- band[band$B.Flyway %in% c(1:3), ]
-band.CA <- band[band$B.Flyway == 6 & band$Region..State %in% c("Quebec", "Nova Scotia", "New Brunswick", "Newfoundland and Labrador and St. Pierre et Miquelon", "Ontario", "Manitoba", "Prince Edward Island", "Saskatchewan", "Alberta", "Nunavut", "Northwest Territories"), ]
-
-band <- rbind(band.US, band.CA)
+band <- band %>% 
+  filter(B.Flyway %in% c(1:3) | Region..State %in% c("Quebec", "Nova Scotia", "New Brunswick", "Newfoundland and Labrador and St. Pierre et Miquelon", "Ontario", "Manitoba", "Prince Edward Island", "Saskatchewan", "Alberta", "Nunavut", "Northwest Territories"))
 
 # Get rid of unknown age at banding
 band <- band[band$Age..VAGE != "Unknown", ]
@@ -329,31 +316,31 @@ for (s in 1:nSeason) {
   }
 }
 
-saveRDS(MALL.marray, file = "data/MALL_marray_2.rda")
-saveRDS(MALL.release, file = "data/MALL_release_2.rda")
+saveRDS(MALL.marray, file = "data/MALL_marray.rda")
+saveRDS(MALL.release, file = "data/MALL_release.rda")
 
-## Green-winged teal
-# AGWT.marray<-array(NA,dim=c(nYear,nYear+1,nSeason,nClass),
-#                    dimnames =list(Year, c(Year,"Nonrecov"), c("post-season", "pre-season"),
-#                                   c("Juvenile_Male", "Juvenile_Female", "Adult_Male", "Adult_Female")))
-# AGWT.release<-array(NA,dim=c(nYear,nSeason,nClass),
-#                     dimnames =list(Year, c("post-season", "pre-season"),
-#                                    c("Juvenile_Male", "Juvenile_Female", "Adult_Male", "Adult_Female")))
-#
-# for (s in 1:nSeason){
-#   for (c in 1:nClass){
-#     for (b in 1:nYear){
-#       for (r in 1:(nYear+1)){
-#         if(r <= nYear){
-#           AGWT.marray[b,r,s,c] <- marray[b,r,s,c]
-#         }else{
-#           AGWT.marray[b,r,s,c] <- nonrecov[b,,s,c]
-#         }
-#         AGWT.release[b,s,c] <- sum(AGWT.marray[b,,s,c])
-#       }}}}
-#
-#  saveRDS(AGWT.marray, file = "AGWT_marray_new.rda")
-#  saveRDS(AGWT.release, file = "AGWT_release_new.rda")
+# Green-winged teal
+AGWT.marray<-array(NA,dim=c(nYear,nYear+1,nSeason,nClass),
+                   dimnames =list(Year, c(Year,"Nonrecov"), c("post-season", "pre-season"),
+                                  c("Juvenile_Male", "Juvenile_Female", "Adult_Male", "Adult_Female")))
+AGWT.release<-array(NA,dim=c(nYear,nSeason,nClass),
+                    dimnames =list(Year, c("post-season", "pre-season"),
+                                   c("Juvenile_Male", "Juvenile_Female", "Adult_Male", "Adult_Female")))
+
+for (s in 1:nSeason){
+  for (c in 1:nClass){
+    for (b in 1:nYear){
+      for (r in 1:(nYear+1)){
+        if(r <= nYear){
+          AGWT.marray[b,r,s,c] <- marray[b,r,s,c]
+        }else{
+          AGWT.marray[b,r,s,c] <- nonrecov[b,,s,c]
+        }
+        AGWT.release[b,s,c] <- sum(AGWT.marray[b,,s,c])
+      }}}}
+
+ saveRDS(AGWT.marray, file = "AGWT_marray.rda")
+ saveRDS(AGWT.release, file = "AGWT_release.rda")
 
 
 
@@ -450,24 +437,24 @@ saveRDS(MALL.release, file = "data/MALL_release_2.rda")
 ####### Format wing data ########
 #################################
 # import raw wing data
-# mall.wings <- read.csv("raw_dat/PCS_MALL_1991_2020.csv")
+mall.wings <- read.csv("raw_dat/PCS_MALL_1991_2020.csv")
 agwt.wings <- read.csv("raw_dat/PCS_AGWT_1991_2020.csv")
 
 # Remove unknown age or sex
-# mall.wings <- mall.wings[!(mall.wings$age_code==0 | mall.wings$sex_code==0),] # 889384 records remaining
-agwt.wings <- agwt.wings[!(agwt.wings$age_code == 0 | agwt.wings$sex_code == 0), ] # 889384 records remaining
+mall.wings <- mall.wings[!(mall.wings$age_code==0 | mall.wings$sex_code==0),] 
+agwt.wings <- agwt.wings[!(agwt.wings$age_code == 0 | agwt.wings$sex_code == 0), ]
 
 
 # Exclude states in the Pacific Flyway and Alaska
-# mall.wings$state <- trimws(mall.wings$state) # get rid of extra space at the end of states
-# mall.wings <- mall.wings[!(mall.wings$state%in%c("AK", "CA", "OR", "WA", "UT", "ID", "NV", "AZ")),]
+mall.wings$state <- trimws(mall.wings$state) # get rid of extra space at the end of states
+mall.wings <- mall.wings[!(mall.wings$state%in%c("AK", "CA", "OR", "WA", "UT", "ID", "NV", "AZ")),]
 agwt.wings$state <- trimws(agwt.wings$state) # get rid of extra space at the end of states
 agwt.wings <- agwt.wings[!(agwt.wings$state %in% c("AK", "CA", "OR", "WA", "UT", "ID", "NV", "AZ")), ]
 
 # Summarize wings by cohort
-# cohort_table <- mall.wings %>%
-#   group_by(cohort, Season) %>%
-#   summarize(Number = n())
+cohort_table <- mall.wings %>%
+  group_by(cohort, Season) %>%
+  summarize(Number = n())
 
 cohort_table <- agwt.wings %>%
   group_by(cohort, Season) %>%
@@ -487,8 +474,8 @@ female.wing <- cohort_table %>%
   group_by(Season) %>%
   summarise(sum = sum(Number))
 
-saveRDS(jf.wing, file = "data/AGWT_juv_female_wing_new.rda")
-saveRDS(female.wing, file = "data/AGWT_all_female_wing_new.rda")
+saveRDS(jf.wing, file = "data/MALL_juv_female_wing.rda")
+saveRDS(female.wing, file = "data/MALL_all_female_wing.rda")
 
 # plot cohorts
 
@@ -505,17 +492,15 @@ ggplot(cohort_table, aes(x = cohort, y = Number)) +
 # Breeding population estimates and standard errors (in thousands) for Mallards and Green-winged teal from the traditional survey area (strata 1-18, 20-50, 75-77) and eastern survey area.
 
 # Read in stratum-specific estimates
-## mallard
-dat.tsa <- read.csv("wbphs_traditionalarea_estimates_forDistribution.csv")
-dat.esa <- read.csv("easternsurvey_mall_agwt.csv")
+# ## mallard
+dat.tsa <- read.csv("raw_dat/wbphs_traditionalarea_estimates_forDistribution.csv")
+dat.esa <- read.csv("raw_dat/easternsurvey_mall_agwt.csv")
 dat.esa <- dat.esa[dat.esa$MASAlpha == "mall" & dat.esa$ReportingScale == "EasternCA", ]
 dat.tsa <- dat.tsa[dat.tsa$survey_species == "MALL" & dat.tsa$stratum %in% c(14:max(dat.tsa$stratum)), ]
 
 ## agwt
-# dat.tsa <- read.csv("wbphs_traditionalarea_estimates_forDistribution.csv")
-# dat.esa <- read.csv("easternsurvey_mall_agwt.csv")
-# dat.esa <- dat.esa[dat.esa$MASAlpha=="agwt" & dat.esa$ReportingScale == "EasternCA",]
-# dat.tsa <- dat.tsa[dat.tsa$survey_species=="AGWT" & dat.tsa$stratum%in%c(14:max(dat.tsa$stratum)),]
+dat.esa <- dat.esa[dat.esa$MASAlpha=="agwt" & dat.esa$ReportingScale == "EasternCA",]
+dat.tsa <- dat.tsa[dat.tsa$survey_species=="AGWT" & dat.tsa$stratum%in%c(14:max(dat.tsa$stratum)),]
 
 
 dat.tsa <- dat.tsa %>%
@@ -523,27 +508,28 @@ dat.tsa <- dat.tsa %>%
   summarise(Sum = sum(estimate))
 
 # remove 2022 estimate
-dat.tsa <- dat.tsa[-nrow(dat.tsa), ]
-dat.esa <- dat.esa[-nrow(dat.esa), ]
+dat.tsa <- dat.tsa[-nrow(dat.tsa), ] # Years 1955 - 2019
+dat.esa <- dat.esa[-nrow(dat.esa), ] # Years 1998 - 2019
 
 # divide by 10,000
 dat.tsa$Sum <- dat.tsa$Sum / 10000
-y_esa <- y_esa / 10000
+dat.esa$Est <- dat.esa$Est / 10000
+# y_esa <- y_esa / 10000
 
 
 y_esa <- c(rep(NA, 1998 - 1955), dat.esa$Est)
 
 y_tsa <- dat.tsa$Sum
 year.trad <- c(1955:2019)
-T <- length(year.trad)
+T <- length(year.trad) # Year 1955 - 2019 65 years total
 
 # subsetting data from 1991-2021
-y_esa <- c(y_esa[37:length(y_esa) - 1], NA, NA) # adding NAs to years with no survey
-y_tsa <- c(y_tsa[37:length(y_tsa) - 1], NA, NA)
-saveRDS(y_tsa, "MALL_TSA_Bpop.rda")
-saveRDS(y_esa, "MALL_ESA_Bpop.rda")
-# saveRDS(y_tsa, "AGWT_TSA_Bpop.rda")
-# saveRDS(y_esa, "AGWT_ESA_Bpop.rda")
+y_esa <- c(y_esa[37:length(y_esa)], NA, NA) # adding NAs to years with no survey Years 1991 - 2021
+y_tsa <- c(y_tsa[37:length(y_tsa)], NA, NA)
+# saveRDS(y_tsa, "MALL_TSA_Bpop.rda")
+# saveRDS(y_esa, "MALL_ESA_Bpop.rda")
+saveRDS(y_tsa, "AGWT_TSA_Bpop.rda")
+saveRDS(y_esa, "AGWT_ESA_Bpop.rda")
 
 
 ####################

@@ -1,0 +1,26 @@
+{
+    "id": "41425931",
+    "path": "~/GitHub/mall_agwt_ipm/01_mall_agwt_data_formatting.R",
+    "project_path": "01_mall_agwt_data_formatting.R",
+    "type": "r_source",
+    "hash": "3182586517",
+    "contents": "",
+    "dirty": false,
+    "created": 1722610939180.0,
+    "source_on_save": false,
+    "relative_order": 1,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "451,56",
+        "scrollLine": "0"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1729448678,
+    "encoding": "ISO8859-1",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1729448678403,
+    "read_only": false,
+    "read_only_alternatives": []
+}

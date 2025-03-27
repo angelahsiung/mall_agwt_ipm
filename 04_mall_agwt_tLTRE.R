@@ -1,7 +1,7 @@
 ##############################################################
 ### The purpose of this script is to extract the MCMC samples 
 ### from the IPM for each species and perform retrospective analyses
-### Date last updated: 07/26/2024
+### Date last updated: 03/09/2025
 ##############################################################
 
 # Prepare packages
@@ -38,9 +38,8 @@ SN.jm <- ipm$sims.list$SN.jm
 SH.jf <- ipm$sims.list$SH.jf
 SN.jf <- ipm$sims.list$SN.jf
 R <- ipm$sims.list$R
-## NOTE: This will need to be changed depending on which species. Might need to change it to be more flexible instead of hard-coded
-## REVIEW: Please review whether the subsetting makes sense. The reason for it is that we seem to have an extra year of productivity estimate compared to survivals, so we are removing the last year in the tLTRE
-R <- R[, 1:15] 
+
+R <- R[, 1:20] # Don't need last year's recruitment
 N_HY_mal <- ipm$sims.list$N_HY_mal
 N_AHY_mal <- ipm$sims.list$N_AHY_mal
 N_HY_fem <- ipm$sims.list$N_HY_fem
@@ -53,7 +52,7 @@ mean(tempvar_lam)
 quantile(tempvar_lam,0.05)
 quantile(tempvar_lam,0.95)
 
-lambda <- expression(((n.hy.fem + n.ahy.fem)*R*SH.jm*(SN.jm^0.25) + (n.hy.fem + n.ahy.fem)*R*SH.jf*(SN.jf^0.25) + (n.hy.mal + n.ahy.mal)*SH.am*SN.am + (n.hy.fem + n.ahy.fem)*SH.af*SN.af)/(n.hy.fem + n.ahy.fem + n.hy.mal + n.ahy.mal))
+lambda <- expression(((n.hy.fem + n.ahy.fem)*R*SH.jm*(SN.jm^0.375) + (n.hy.fem + n.ahy.fem)*R*SH.jf*(SN.jf^0.375) + (n.hy.mal + n.ahy.mal)*SH.am*SN.am + (n.hy.fem + n.ahy.fem)*SH.af*SN.af)/(n.hy.fem + n.ahy.fem + n.hy.mal + n.ahy.mal))
 
 D(lambda, "R")
 
@@ -94,7 +93,6 @@ sens_N_AHY_fem <- eval(D(lambda, "n.ahy.fem"), envir=mu)
 sens_N_HY_mal <- eval(D(lambda, "n.hy.mal"), envir=mu)
 sens_N_AHY_mal<- eval(D(lambda, "n.ahy.mal"), envir=mu)
 
-## REVIEW: Does the code for calculating contribution make sense?
 # Calculate the contributions of temporal process variation and co-variations in the demographic parameters to temporal variation in the realized population growth rates.
 
 cont_SH_am <- cont_SN_am <- cont_SH_af <-cont_SN_af <- cont_SH_jm <- cont_SN_jm <- cont_SH_jf <- cont_SN_jf <- cont_R <-cont_N_HY_mal <-cont_N_AHY_mal <-cont_N_HY_fem <-cont_N_AHY_fem <- matrix(0,samples,1)
@@ -107,7 +105,7 @@ for (j in 1:samples){
   contmatrix <- matrix(0,13,13)
    for (k in 1:13){
      for (m in 1:13){
-      contmatrix <- dp_varcov*sensvec[k]*sensvec[m]
+      contmatrix[k,m] <- dp_varcov[k,m]*sensvec[k]*sensvec[m]
      }
    }
   contributions <- rowSums(contmatrix)
@@ -192,7 +190,7 @@ theme(strip.text = element_text(size = 9)) +
   theme_tltre() +
   geom_col() +
   geom_linerange( aes(x = Parameter, ymin = Lower, ymax = Upper), colour = "orange", alpha = 0.9, linewidth = 0.5)+
-  facet_wrap(~Species, scales = "free_y")
+  facet_wrap(~Species)
 
 
 ggsave("figures/contribution_plot_new_both.jpg", units="cm", width=9, height=7, dpi=600)
@@ -203,12 +201,11 @@ ggsave("figures/contribution_plot_new_both.jpg", units="cm", width=9, height=7, 
 #########################################################################
 ## NOTE: Different way of evaluating contributions, also making it possible to look at 
 ## how environmental covariates affect contributions
-# AGWT
-ipm <- agwt.ipm
+# Mallard
+ipm <- mall.ipm
 
-lambda <- expression(((N_HY_fem + N_AHY_fem)*R*SH.jm*(SN.jm^0.25) + (N_HY_fem + N_AHY_fem)*R*SH.jf*(SN.jf^0.25) + (N_HY_mal + N_AHY_mal)*SH.am*SN.am + (N_HY_fem + N_AHY_fem)*SH.af*SN.af)/(N_HY_fem+N_AHY_fem+N_HY_mal+N_AHY_mal))
+lambda <- expression(((N_HY_fem + N_AHY_fem)*R*SH.jm*(SN.jm^0.375) + (N_HY_fem + N_AHY_fem)*R*SH.jf*(SN.jf^0.375) + (N_HY_mal + N_AHY_mal)*SH.am*SN.am + (N_HY_fem + N_AHY_fem)*SH.af*SN.af)/(N_HY_fem+N_AHY_fem+N_HY_mal+N_AHY_mal))
 
-D(lambda, "R")
 # Compute differences and means of demographic rates and population structure between successive years
 n.years <- length(ipm$mean$SH.am)
 n.draws <- ipm$mcmc.info$n.samples # Determine number of MCMC draws
@@ -235,7 +232,7 @@ diff.lambda <- getDiff(draws$lambda)
 mean.diff.lambda <- apply(diff.lambda, 2, mean)
 mean.diff.lambda <- mean.diff.lambda %>% 
   as.data.frame() %>% 
-  mutate(Year = c(1993:2019)) %>% 
+  mutate(Year = c(2001:2019)) %>% 
   pivot_longer(!Year, values_to = "lambda")
 
 ggplot(mean.diff.lambda, aes(x = Year, y = lambda)) +
@@ -264,12 +261,13 @@ senss[,,"N_HY_mal"] <- eval(D(lambda, "N_HY_mal"), envir=means)
 senss[,,"N_AHY_mal"] <- eval(D(lambda, "N_AHY_mal"), envir=means)
 
 conts <- diff*senss
+cri <- function(x) quantile(x, c(0.025, 0.975))
+
 ci.conts <- apply(conts, c(2,3), cri)
 mean.conts <- apply(conts, c(2,3), mean)
 mean.conts <- mean.conts %>% 
   as.data.frame() %>% 
-  # select(SH.am:R) %>% 
-  mutate(Year = c(1993:2019)) %>% 
+  mutate(Year = c(2001:2019)) %>% 
   pivot_longer(!Year, names_to = "Param", values_to = "Contribution")
 
 ggplot(mean.conts, aes(x = Year, y = Contribution, fill = Param))+
@@ -278,12 +276,10 @@ ggplot(mean.conts, aes(x = Year, y = Contribution, fill = Param))+
 
 ci.conts.new <- as.data.frame.table(ci.conts)
 ci.conts.new <- data.frame(ci.conts.new) %>% 
-                  mutate(quants = rep(c('lower', 'upper'), 351),
-                         Year = rep(rep(1993:2019, each = 2), 13)) %>% 
+                  mutate(quants = rep(c('lower', 'upper'), 247),
+                         Year = rep(rep(2001:2019, each = 2), 13)) %>% 
                   rename(Param = Var3) %>% 
                   select(Param, Year, quants, Freq) %>% 
-                  # relocate(Parameter, quants) %>% 
-                  # pivot_longer(!c(Parameter, quants), names_to = 'year', values_to = 'CI') %>% 
                   pivot_wider(names_from = quants, values_from = Freq)
 
 mean.conts <- full_join(mean.conts, ci.conts.new, by = c("Year" = "Year", "Param" = "Param"))
@@ -303,53 +299,43 @@ dx32 <- (envi_cov$avg_dx32_ml-mean(envi_cov$avg_dx32_ml))/sd(envi_cov$avg_dx32_m
 # May pond count estimates in thousands (1990-2019)
 ponds <- c(3508.5, 3200, 3608.9, 3611.7, 5984.8, 6335.4, 7482.2, 7458.2, 4586.9, 6704.3, 3946.9, 4640.4, 2720.0, 5190.1, 3919.6, 5381.2, 6093.9, 7002.7, 4431.4, 6434.0, 6665.0, 8132.2, 5544.0, 6891.7, 7181.2, 6307.7, 5012.5, 6096.0, 5227.4, 4990.3)
 
-# subset ponds to 1992-2019
-ponds <- ponds[3:length(ponds)] 
+# subset ponds to 2001-2019
+ponds <- ponds[11:length(ponds)] 
+
 ponds.std <- (ponds-mean(ponds))/sd(ponds) # standardize
 
-# subset precip to 1992-2019 for agwt
-prcp.new <- prcp[2:(length(prcp)-1)]
-
-# subset to 2005-2019 for mallard
-# prcp.new <- prcp[15:(length(prcp)-1)] # For mallard
-
+# subset precip to 2000-2019
+prcp.new <- prcp[10:(length(prcp)-1)]
 prcp.diff <- prcp.new[2:length(prcp.new)]-prcp.new[1:(length(prcp.new)-1)]
+pond.diff <- ponds.std[2:length(ponds.std)]-ponds.std[1:(length(ponds.std)-1)] 
 
 mean.conts.R <- mean.conts[mean.conts$Param == "R",]
 # mean.conts.R <- cbind(mean.conts.R, lower = ci.conts[1,,'R'], upper = ci.conts[2,,'R'])
 nrow(mean.conts.R)
 length(prcp.diff)
+length(pond.diff)
 
-mean.conts.R <- cbind(mean.conts.R, Precipitation = prcp.diff)
-
-mean.conts.R <- cbind(mean.conts.R, SN.jf = mean.conts[mean.conts$Param == 'SN.jf',])
-
-pond.diff <- ponds.std[2:length(ponds.std)]-ponds.std[1:(length(ponds.std)-1)] # For agwt
-#pond.diff <- ponds.std[15:length(ponds.std)]-ponds.std[14:(length(ponds.std)-1)] # For mallard
-
-mean.conts.R <- cbind(mean.conts.R, Ponds = pond.diff)
+mean.conts.R <- cbind(mean.conts.R, Precipitation = prcp.diff, Ponds = pond.diff)
 
 Rcont.precip <- ggplot(mean.conts.R, aes(x = Precipitation, y = Contribution)) +
-    # geom_point(aes(x = Precipitation,  y = SN.jf.Contribution)) +
     theme_tltre() +
     geom_pointrange(aes(x = Precipitation, ymin = lower, ymax = upper)) +
   theme(axis.text.x = element_text(angle = 0), axis.text = element_text(size = 16), axis.title = element_text(size = 20)) +
   xlab(paste0('Interannual difference in winter ', '\n', 'precipitation in the south')) +
   ylab('Contribution of reproduction to population growth') +
-  annotate("text", x=-3.5, y=1, label= "(b)", size = 13) 
+  annotate("text", x=-3.4, y=0.8, label= "(a)", size = 13) 
 
   
 Rcont.ponds <- ggplot(mean.conts.R, aes(x = Ponds, y = Contribution)) +
-  # geom_point(aes(x = Precipitation,  y = SN.jf.Contribution)) +
   theme_tltre() +
   geom_pointrange(aes(x = Ponds, ymin = lower, ymax = upper)) +
   theme(axis.text.x = element_text(angle = 0), axis.text = element_text(size = 16), axis.title = element_text(size = 20)) +
   xlab("Interannual difference in breeding habitat") +
   ylab('Contribution of reproduction to population growth') +
-  annotate("text", x=-2, y=1, label= "(b)", size = 13) 
+  annotate("text", x=-1.8, y=0.8, label= "(b)", size = 13) 
   
 Rcont.precip | Rcont.ponds
 
-ggsave('figures/agwt_Rcont_cov_relationship.jpg', width = 12, height = 8)
+ggsave('figures/mall_Rcont_cov_relationship.jpg', width = 12, height = 8)
 
  

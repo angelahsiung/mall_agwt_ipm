@@ -1,5 +1,5 @@
 # mall_agwt_ipm
-Integrated population model for mallard and green-winged teal
+Code for formatting the data and running the integrated population model for mallard and green-winged teal
 
 # Metadata
 

@@ -11,15 +11,16 @@ The subfolder named "environmental_covariates" under the "raw_dat" folder contai
 The "data" folder contains data that have been formatted and ready for analysis.
 
 ## Scripts
-"envi_cov_manip.R" is for formatting environmental covariate data.
 
-"mall_agwt_data_formatting.R" is for formatting the individual/population data used in the model (BPop, wing data, and dead-recovery data).
+"01_mall_agwt_data_formatting.R" is for formatting the individual/population data used in the model (BPop, wing data, and dead-recovery data).
+
+"02_envi_cov_data_formatting.R" is for formatting environmental covariate data.
+
+"03_mall_agwt_run_script.R" contains the code for running the integrated population model and produce figures as results.
+
+"04_mall_agwt_tLTRE.R"is for running the retrospective analysis and producing figures related to the analysis.
 
 "mall_agwt_ipm_clean.jags" contains the model code for the integrated population model.
-
-"mall_agwt_run_script.R" contains the code for running the integrated population model and produce figures as results.
-
-"mall_agwt_tLTRE.R"is for running the retrospective analysis and producing figures related to the analysis.
 
 
 

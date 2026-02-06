@@ -1,0 +1,8 @@
+"0","ggplot() +
+  geom_line(Bpop, aes(x = Year, y = mean, group = Model, fill = Model))
+"
+"1","[1m[33mError[39m in `geom_line()`:[22m
+[38;5;255m[33m![38;5;255m `mapping` must be created by `aes()`.[39m
+Backtrace:
+[90m 1. [39m[1m[94mggplot2::geom_line([39m[22mBpop, aes(x = Year, y = mean, group = Model, fill = Model)[1m[94m)[39m[22m
+"

@@ -1,0 +1,307 @@
+### Two Stage SMR model for running: White-tailed deer population declines in a high-prevalence chronic wasting disease region of Arkansas, USA
+
+library(nimble)  
+library(nimbleSCR)
+library(parallel)
+library(coda)
+
+# # Stage 1 - By Sex --------------------------------------------------------
+#only two stages (male/female)
+deer_stage1_2sex <- nimbleCode({
+  # Known number of marked individuals
+  # Joint model for camera and telemetry data
+  
+  B01 ~ dnorm(log(0.1), 1)
+  B02 ~ dnorm(log(350/res_r), 1)
+  re_lam[1] <- 0
+  re_sig[1] <- 0
+  re_lam2[1] <- 0
+  re_sig2[1] <- 0
+  for(q in 2:3){
+    re_lam[q] ~ dnorm(0, 1) #effect of site > 1
+    re_sig[q] ~ dnorm(0, 1) #effect of site > 1
+  }
+  re_lam2[2] ~ dnorm(0, 1) #effect of sex = 2
+  re_sig2[2] ~ dnorm(0, 1) #effect of sex = 2
+  
+  for(q in 1:3){ #3 sites
+    for(ss in 1:2){ #two sexes
+      meanloglam0[ss,q] <- B01 + re_lam[q] + re_lam2[ss] #effect of site and sex
+      meanlogsigma[ss,q]<- B02 + re_sig[q] + re_sig2[ss]
+      for(t in 1:4){
+        # Detection parameter - lam0
+        loglam0[ss,q,t] <- meanloglam0[ss,q]
+        lam0[ss,q,t] <- exp(loglam0[ss,q,t])
+        
+        # spatial scale parameter - sigma
+        #corrected by res_r, which is resolution of nimbleSCR landscape
+        logsigma[ss,q,t] <- meanlogsigma[ss,q]
+        sigma[ss,q,t] <- exp(logsigma[ss,q,t])
+      } #end s
+    } #end q
+  } #end t
+  # SCR model
+  # Assuming constant activity center between years
+  # Uses NimbleSCR built in functions for speed
+  a1 ~ dnorm(0, 1) #crops
+  a2 ~ dnorm(0, 1) #easting
+  for(q in 1:3){
+    a3[q] ~ dnorm(0, sd = .5) #time trend per site
+  }
+  for(t in 1:4){
+    for(mm in 1:numHabWindows){ #inefficient, but nimble doesn't like vector indexing of the site variable
+      habIntensity[mm,t] <- 1 
+    }
+    sumHabIntensity[t] <- sum(habIntensity[1:numHabWindows,t])
+    logHabIntensity[1:numHabWindows,t] <- log(habIntensity[1:numHabWindows,t])
+    logSumHabIntensity[t] <- log(sumHabIntensity[t])
+    
+    for(i in 1:nind[t]) { # loop over collared deer
+      s[i,1:2,t] ~ dbernppAC(
+        lowerCoords = habLoCoords[1:numHabWindows,1:2],
+        upperCoords = habUpCoords[1:numHabWindows,1:2],
+        logIntensities = logHabIntensity[1:numHabWindows,t],
+        logSumIntensity = logSumHabIntensity[t],
+        habitatGrid = habitatGrid[1:y.max,1:x.max],
+        numGridRows = y.max,
+        numGridCols = x.max)
+      
+      for(k in 1:nTelemLocs[i,t]){ #collar data, day doesn't matter
+        u[i,k,1,t] ~ dnorm(s[i,1,t], 1/(sigma[sex[i,t], site[i,t],t]^2)) # x coord
+        u[i,k,2,t] ~ dnorm(s[i,2,t], 1/(sigma[sex[i,t], site[i,t],t]^2)) # y coord
+      } #end k
+      
+      y[i,1:y_dim,t] ~ dbinomLocal_normal_p(detNums = detNums[i,t],
+                                            size = trials[1:n.traps,t], #max number detections per trap per day (1)
+                                            p0 = lam0[sex[i,t], site[i,t],t],
+                                            detIndices = detIndices[i,,t],
+                                            s = s[i,1:2,t],
+                                            sigma = sigma[sex[i,t], site[i,t],t],
+                                            trapCoords = trapCoords[1:n.traps,1:2],
+                                            localTrapsIndices = trapIndex[1:n.cells,1:maxNBDets],
+                                            localTrapsNum = nTraps[1:n.cells],
+                                            resizeFactor = resizeFactor,
+                                            habitatGrid = habitatIDDet[1:y.maxDet,1:x.maxDet],
+                                            indicator = 1,
+                                            lengthYCombined = lengthYCombined)
+    } #end i
+  } #end t
+})
+
+consts <- dget("Stage1_bysex.txt")[["consts"]]
+inits <- dget("Stage1_bysex.txt")[["inits"]]
+dat <- dget("Stage1_bysex.txt")[["dat"]]
+inits$B01 <- log(1)
+inits$B02 <- 2
+inits$a3 <- rep(-.1, 3)
+params <- c("loglam0", "lam0", "logsigma", "sigma", 're_lam', 're_sig','re_lam2', 're_sig2', 'meanloglam0', 'meanlogsigma', 'B01', 'B02', 'a1', 'a2', 'a3')
+source('NimbleDists.R') #warning message expected
+cl <- makeCluster(3)
+clusterExport(cl = cl, varlist = c("dat", "consts", "inits", "params", "deer_stage1_2sex", 'dbinomLocal_normal_p', 'rbinomLocal_normal_p'))
+system.time(
+  nim.out <- clusterEvalQ(cl = cl,{
+    library(nimble)
+    library(coda)
+    library(nimbleSCR)
+    prepnim <- nimbleModel(code = deer_stage1_2sex, constants = consts,
+                           data = dat, inits = inits, calculate = T)
+    #prepnim$calculate()
+    mcmcnim <- configureMCMC(prepnim, monitors = params, print = T)
+    nimMCMC <- buildMCMC(mcmcnim) #actually build the code for those samplers
+    Cmodel <- compileNimble(prepnim) #compiling the model itself in C++;
+    Compnim <- compileNimble(nimMCMC, project = prepnim) # compile the samplers next
+    Compnim$run(niter = 50000, nburnin = 35000, thin = 2)
+    return(as.mcmc(as.matrix(Compnim$mvSamples)))
+  }) #this will take awhile and not produce any noticeable output.
+)
+
+stage1_2sex.res <- mcmc.list(nim.out)
+#plot(stage1_2sex.res)
+stopCluster(cl)
+saveRDS(stage1_2sex.res, 'allyears_Stage1_Oct6_b.rds')
+
+
+##### Stage 2 #####
+
+deer_stage2_bysex <- nimbleCode({
+  a0 ~ dnorm(0, sd = .5) #intercept
+  a1 ~ dnorm(0, sd = .5) #crop relationship
+  a2 ~ dnorm(0, sd= .5) #easting relationship
+  for(k in 1:2){
+    for(q in 1:3){
+      a3[q,k] ~ dnorm(0, sd = .5) #time trend per site by sex
+    }
+    #Year 1:
+    habIntensity[1:numHabWindows,1,k] <- exp(a0 + a1*crop[1:numHabWindows,1] + a2*east[1:numHabWindows])*pixArea
+    sumHabIntensity[1,k] <- sum(habIntensity[1:numHabWindows,1,k]) #expected abundance in state space
+    logHabIntensity[1:numHabWindows,1,k] <- log(habIntensity[1:numHabWindows,1,k])
+    logSumHabIntensity[1,k] <- log(sumHabIntensity[1,k]) #log expected abundance
+    
+    #Years 2-4:
+    for(t in 2:4){
+      for(mm in 1:numHabWindows){ #inefficient, but nimble doesn't like vector indexing of the site variable
+        habIntensity[mm,t,k] <- exp(a0 + a1*crop[mm,t] + a2*east[mm]+ a3[site[mm],k]*(t-1))*pixArea #add in time trend
+      }
+      sumHabIntensity[t,k] <- sum(habIntensity[1:numHabWindows,t,k])
+      logHabIntensity[1:numHabWindows,t,k] <- log(habIntensity[1:numHabWindows,t,k])
+      logSumHabIntensity[t,k] <- log(sumHabIntensity[t,k])
+    } #end t
+    
+    ## data augmention piece:
+    for(t in 1:4){
+      psi[k,t] <- sumHabIntensity[t,k]/M # proportion of population in sample
+    }
+  }
+  
+  # Use the posterior estimates from the marked population as informative 
+  # priors for the unmarked population
+  # Multivariate normal distribution
+  for(t in 1:4){
+    for(q in 1:3){ #sites:
+      for(k in 1:2){ #males and females; males = 2, females = 1
+        meanlog_sig_lam0[1:2,k,q,t] ~ dmnorm(prior_means[1:2,k,q,t], cov=prior_vcov[1:2,1:2,k,q,t])
+        sigma[k,q,t] <- exp(meanlog_sig_lam0[1,k,q,t])
+        lam0[k,q,t] <- exp(meanlog_sig_lam0[2,k,q,t])
+      } #end k
+    } #end q
+    
+    for(k in 1:2){
+      for(i in 1:M) { # loop over all deer
+        z[i,k,t] ~ dbern(psi[k,t])
+        
+        #get an activity center regardless if real/fake
+        s[i,1:2,k,t] ~ dbernppAC(
+          lowerCoords = habLoCoords[1:numHabWindows,1:2],
+          upperCoords = habUpCoords[1:numHabWindows,1:2],
+          logIntensities = logHabIntensity[1:numHabWindows,t,k],
+          logSumIntensity = logSumHabIntensity[t,k],
+          habitatGrid = habitatGrid[1:y.max,1:x.max],
+          numGridRows = y.max,
+          numGridCols = x.max) 
+      } #end i
+      
+      p[1:n.traps,k,t] <- get_p2( #get p(at least one det) summed across all individuals
+        s = s[1:M, 1:2,k,t],
+        M = M,
+        lam0 = lam0[k,1:3,t], #internally in this function, traps have different lam0s/sigmas
+        sigma = sigma[k,1:3,t],
+        trapCoords = trapCoords[1:n.traps,1:2],
+        ntraps = n.traps,
+        z = z[1:M,k,t])
+      
+      for(j in 1:n.traps) {
+        nsum[j,k,t] ~ dbin(p[j,k,t], trials[j,t])
+      } #end j
+      
+      N[k,t] <- sum(z[1:M,k,t]) #per sex over time across all sites
+      dens[1:numHabWindows,k,t] <- calculateDensity(s = s[1:M,1:2,k,t],
+                                                    habitatGrid =  habitatGrid[1:y.max,1:x.max],
+                                                    indicator = z[1:M,k,t],
+                                                    numWindows = numHabWindows,
+                                                    nIndividuals = M)
+    } #end k
+  }# end t
+})
+
+params2 <- c("N","psi", "sigma", "lam0", 'dens', 'a2', 'a1', 'a3', 'a0')
+
+stage1.res <- readRDS('allyears_Stage1_Oct6_b.rds')
+prior_means <- array(NA, c(2,2,3,4)) #2 params, 2 sexes, 3 sites, 4 years
+prior_vcov <- array(NA, c(2,2,2,3,4)) #2x2 variance, 2 sexes, 3 sites, 4 years
+#grab relevant information for stage 2; remember that males = 2, females = 1
+for(q in 1:3){ #3 sites
+  for(t in 1:4){ #4 years
+    samps_m <- as.matrix(stage1.res[,c(paste0("logsigma[2, ", q, ', ', t, "]"), paste0("loglam0[2, ", q, ', ', t, "]"))]) #males
+    xbar_m <- colMeans(samps_m)
+    xvar_m <- var(samps_m)
+    samps_f <- as.matrix(stage1.res[,c(paste0("logsigma[1, ", q, ', ', t, "]"), paste0("loglam0[1, ", q, ', ', t, "]"))]) #females
+    xbar_f <- colMeans(samps_f)
+    xvar_f <- var(samps_f)
+    prior_means[,1,q,t] <- xbar_f
+    prior_means[,2,q,t] <- xbar_m
+    prior_vcov[,,1,q,t] <- xvar_f
+    prior_vcov[,,2,q,t] <- xvar_m
+  }
+}
+
+### Grab nimble stuff:
+consts2 <- dget('stage2_bysex.txt')[['consts']]
+inits2 <- dget('stage2_bysex.txt')[['inits']]
+inits2$meanlog_sig_lam0 <- prior_means
+inits2$a1 <- -.6
+inits2$a2 <- 0.5
+inits2$a0 <- .5
+inits2$a3 <- matrix(rep(c(-.2, .06, -.2), each = 2), byrow = T, nrow = 3)
+dat2 <- dget('stage2_bysex.txt')[['dat']]
+#dat2$trials <- rep(14, 81)
+
+consts2$prior_means <- prior_means
+consts2$prior_vcov <- prior_vcov
+consts2$pixArea <- 2 #in km 
+
+source('NimbleDists.R') #warning message expected
+source('runMCMCbites2.R')
+cl <- makeCluster(5)
+clusterExport(cl = cl, varlist = c("dat2", "consts2", "inits2", "params2", "deer_stage2_bysex", 'get_p2', 'runMCMCbites', 'getModelState', 'restartMCMCbites', 'collectMCMCbites', 'getStateVariableNames', 'setModelState','getMCMCstate', 'setMCMCstate'))
+system.time(
+  nim.out <- clusterEvalQ(cl = cl,{
+    library(nimble)
+    library(coda)
+    library(nimbleSCR)
+    prepnim <- nimbleModel(code = deer_stage2_bysex, constants = consts2,
+                           data = dat2, inits = inits2, calculate = T)
+    
+    conf <- configureMCMC(prepnim, monitors = params2, print = T)#, enableWAIC = TRUE)
+    Rmcmc <- buildMCMC(conf) #actually build the code for those samplers
+    Compnim <- compileNimble(list(model = prepnim,
+                                  mcmc = Rmcmc),
+                             showCompilerOutput = F)
+    Cmcmc <- Compnim$mcmc
+    Cmodel <- compileNimble(prepnim) #compiling the model itself in C++;
+    
+    c <- round(runif(1),4)
+    runMCMCbites( mcmc = Cmcmc,                           ## Compiled MCMC
+                  model = Cmodel,                         ## Compiled model code
+                  conf = conf,                            ## MCMC configuration
+                  bite.size = 250,                        ## Number of iterations per bite
+                  bite.number = 10000,                        ## Number of MCMC bites
+                  path = paste0("DeerAllOct", "/chain",c),          ## Directory where MCMC outputs will be saved
+                  save.rds = TRUE)                        ## Option to save the state of the model 
+  }) #this will take awhile and not produce any noticeable output.
+)
+stopCluster(cl)
+#not the fastest, but workable
+
+### Collect little data bites:
+folders <-list.dirs('./DeerAllOct', full.names = TRUE, recursive = FALSE)
+nimOutput <- list()
+for(j in 1:length(folders)){
+  rdata_files <- list.files(folders[j], pattern = "\\.RData$", full.names = TRUE)
+  if(length(rdata_files) == 0) next
+  new_dir <- folders[j]
+  if(length(rdata_files) < 1) next
+  nimOutput_temp <- collectMCMCbites(new_dir, burnin = 20, progress.bar = F)
+  saveRDS(nimOutput_temp, file = paste0('./DeerAllOct/', substr(new_dir, nchar(new_dir)-10, nchar(new_dir)), '.rds'))
+}
+folders2 <- list.files('./DeerAllOct',full.names = TRUE, recursive = FALSE, pattern = '.rds')
+#
+# # Initialize a list to store combined data frames
+combined_data <- list()
+
+# Iterate over each file
+for (folder in folders2) {
+  mcmcSamples <- readRDS(folder)
+  folder_data <- mcmcSamples
+  folder_name <- basename(folder)
+  combined_data[[folder_name]] <- as.mcmc(folder_data)
+}
+
+mcpars <- array(NA, c(length(combined_data),3))
+for(j in 1:length(combined_data)){
+  mcpars[j,] <- attr(combined_data[[j]], 'mcpar')
+}
+for(j in 1:length(combined_data)){
+  combined_data[[j]] <- window(combined_data[[j]], end = min(mcpars[,2]))
+}
+
+saveRDS(combined_data, 'DeerOut_Oct.rds')

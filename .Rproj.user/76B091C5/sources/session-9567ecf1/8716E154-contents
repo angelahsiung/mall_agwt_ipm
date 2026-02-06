@@ -1,0 +1,180 @@
+---
+title: "Mallard IPM State-Space Models Output Comparison"
+execute:
+  echo: false
+  warning: false
+format: 
+  html:
+    embed-resources: true
+  
+editor: visual
+---
+## The figures below contain the important population parameter estimates of the mallard IPM based on different ways to model the observation error in the state-space model. The alternatives are modeling Bpop as an outcome of a Poisson distribution (poisson mod) versus an outcome of a normal distribution while providing an informed prior for the standard deviation (sig.t ~ dgamma(5, 0.1))
+
+```{r}
+#| echo: false
+library(tidyverse)
+mall.ipm.gamma <- readRDS('mallard_gamma_mod.rds')
+mall.ipm.pois <- readRDS('mall_ipm_y_tot_dpois_N_tot.rds')
+
+```
+## fall/winter survival by model
+```{r, fig.width=10,fig.height=8}
+
+survFW <- data.frame(cbind(Year = rep(c(2000:2019), 8), 
+                              Class = rep(rep(c("Juvenile Male", "Juvenile Female", "Adult Male", "Adult Female"), each = length(mall.ipm.gamma$mean$SH.jm)), 2), 
+                              Model = rep(c("gamma mod", "poisson mod"), each = 80 #116
+                                           ), 
+                              Mean = c(mall.ipm.gamma$mean$SH.jm, mall.ipm.gamma$mean$SH.jf, mall.ipm.gamma$mean$SH.am, mall.ipm.gamma$mean$SH.af, mall.ipm.pois$mean$SH.jm, mall.ipm.pois$mean$SH.jf, mall.ipm.pois$mean$SH.am, mall.ipm.pois$mean$SH.af), 
+                              Lower = c(mall.ipm.gamma$q2.5$SH.jm, mall.ipm.gamma$q2.5$SH.jf, mall.ipm.gamma$q2.5$SH.am, mall.ipm.gamma$q2.5$SH.af, mall.ipm.pois$q2.5$SH.jm, mall.ipm.pois$q2.5$SH.jf, mall.ipm.pois$q2.5$SH.am, mall.ipm.pois$q2.5$SH.af), 
+                              Upper = c(mall.ipm.gamma$q97.5$SH.jm, mall.ipm.gamma$q97.5$SH.jf, mall.ipm.gamma$q97.5$SH.am, mall.ipm.gamma$q97.5$SH.af, mall.ipm.pois$q97.5$SH.jm, mall.ipm.pois$q97.5$SH.jf, mall.ipm.pois$q97.5$SH.am, mall.ipm.pois$q97.5$SH.af)))
+
+survFW <- survFW %>% 
+                mutate_at(c("Mean", "Lower", "Upper"), as.numeric)
+
+ggplot(survFW, aes(x = Year, y = Mean, group = Model)) +
+  geom_pointrange(aes(ymin = Lower, ymax = Upper, color = Model), size = 0.2, alpha = 0.75, position=position_dodge(width=0.35)) +
+  # theme_ipm() +
+  scale_color_manual(values=c("royalblue3", "firebrick3"))+ 
+  ylab("Survival probability") +
+  scale_x_discrete(breaks = seq(2000, 2019, by = 2)) +
+  facet_wrap(~Class)
+```
+
+## spring/summer survival by model
+```{r, fig.width=10,fig.height=8}
+
+survSS<- data.frame(cbind(Year = rep(c(2000:2019), 8), 
+                              Class = rep(rep(c("Juvenile Male", "Juvenile Female", "Adult Male", "Adult Female"), each = length(mall.ipm.gamma$mean$SN.jm)), 2), 
+                              Model = rep(c("gamma mod", "poisson mod"), each = 80 #116
+                                           ), 
+                              Mean = c(mall.ipm.gamma$mean$SN.jm, mall.ipm.gamma$mean$SN.jf, mall.ipm.gamma$mean$SN.am, mall.ipm.gamma$mean$SN.af, mall.ipm.pois$mean$SN.jm, mall.ipm.pois$mean$SN.jf, mall.ipm.pois$mean$SN.am, mall.ipm.pois$mean$SN.af), 
+                              Lower = c(mall.ipm.gamma$q2.5$SN.jm, mall.ipm.gamma$q2.5$SN.jf, mall.ipm.gamma$q2.5$SN.am, mall.ipm.gamma$q2.5$SN.af, mall.ipm.pois$q2.5$SN.jm, mall.ipm.pois$q2.5$SN.jf, mall.ipm.pois$q2.5$SN.am, mall.ipm.pois$q2.5$SN.af), 
+                              Upper = c(mall.ipm.gamma$q97.5$SN.jm, mall.ipm.gamma$q97.5$SN.jf, mall.ipm.gamma$q97.5$SN.am, mall.ipm.gamma$q97.5$SN.af, mall.ipm.pois$q97.5$SN.jm, mall.ipm.pois$q97.5$SN.jf, mall.ipm.pois$q97.5$SN.am, mall.ipm.pois$q97.5$SN.af)))
+
+survSS <- survSS %>% 
+                mutate_at(c("Mean", "Lower", "Upper"), as.numeric)
+
+ggplot(survSS, aes(x = Year, y = Mean, group = Model)) +
+  geom_pointrange(aes(ymin = Lower, ymax = Upper, color = Model), size = 0.2, alpha = 0.75, position=position_dodge(width=0.35)) +
+  scale_color_manual(values=c("royalblue3", "firebrick3"))+ 
+  ylab("Survival probability") +
+  scale_x_discrete(breaks = seq(2000, 2019, by = 2)) +
+  facet_wrap(~Class)
+```
+
+## Band recovery probabilities by model
+```{r, fig.width=10,fig.height=8}
+
+recov<- data.frame(cbind(Year = rep(c(2000:2020), 8), 
+                              Class = rep(rep(c("Juvenile Male", "Juvenile Female", "Adult Male", "Adult Female"), each = length(mall.ipm.gamma$mean$f.af)), 2), 
+                              Model = rep(c("gamma mod", "poisson mod"), each = 84 #116
+                                           ), 
+                              Mean = c(mall.ipm.gamma$mean$f.jm, mall.ipm.gamma$mean$f.jf, mall.ipm.gamma$mean$f.am, mall.ipm.gamma$mean$f.af, mall.ipm.pois$mean$f.jm, mall.ipm.pois$mean$f.jf, mall.ipm.pois$mean$f.am, mall.ipm.pois$mean$f.af), 
+                              Lower = c(mall.ipm.gamma$q2.5$f.jm, mall.ipm.gamma$q2.5$f.jf, mall.ipm.gamma$q2.5$f.am, mall.ipm.gamma$q2.5$f.af, mall.ipm.pois$q2.5$f.jm, mall.ipm.pois$q2.5$f.jf, mall.ipm.pois$q2.5$f.am, mall.ipm.pois$q2.5$f.af), 
+                              Upper = c(mall.ipm.gamma$q97.5$f.jm, mall.ipm.gamma$q97.5$f.jf, mall.ipm.gamma$q97.5$f.am, mall.ipm.gamma$q97.5$f.af, mall.ipm.pois$q97.5$f.jm, mall.ipm.pois$q97.5$f.jf, mall.ipm.pois$q97.5$f.am, mall.ipm.pois$q97.5$f.af)))
+
+recov <- recov %>% 
+                mutate_at(c("Mean", "Lower", "Upper"), as.numeric)
+
+ggplot(recov, aes(x = Year, y = Mean, group = Model)) +
+  geom_pointrange(aes(ymin = Lower, ymax = Upper, color = Model), size = 0.2, alpha = 0.75, position=position_dodge(width=0.35)) +
+  scale_color_manual(values=c("royalblue3", "firebrick3"))+ 
+  ylab("Survival probability") +
+  scale_x_discrete(breaks = seq(2000, 2019, by = 2)) +
+  facet_wrap(~Class)
+```
+## Age ratio by model
+```{r, fig.width=10,fig.height=8}
+
+R.out <- data.frame(cbind(Year = 2000:2020, Model = c(rep(c("gamma mod", "poisson mod"), each = length(mall.ipm.gamma$mean$R))), R.mean = c(mall.ipm.gamma$mean$R, mall.ipm.pois$mean$R), R.lower = c(mall.ipm.gamma$q2.5$R, mall.ipm.pois$q2.5$R), R.upper = c(mall.ipm.gamma$q97.5$R, mall.ipm.pois$q97.5$R)))
+
+R.out <- R.out %>% 
+  mutate_at(c('Year', 'R.mean', 'R.lower', 'R.upper'), as.numeric)
+
+# Plot
+ggplot(R.out, aes(x = Year, y = R.mean, group = Model, fill = Model)) +
+  # add_phylopic(img = agwt.img, color = "black", x = 2019, y = 3, ysize = 0.8) +
+  # add_phylopic(img = mall.img, color = "black", x = 2019, y = 0.35, ysize = 0.7) +
+  geom_line(aes(color = Model), linewidth = 0.5) +
+  geom_ribbon(aes(ymin = R.lower, ymax = R.upper), alpha = 0.3) +
+  # theme_recruit() +
+  scale_color_manual(values=c("royalblue3", "firebrick3"))+
+  scale_fill_manual(values=c("royalblue3", "firebrick3"))+
+  scale_x_continuous(labels = 2000:2020, breaks = seq(2000, 2020, 1)) +
+  # ylim(0, 5) +
+  ylab("Age ratio")
+```
+## Vulnerability by model
+```{r, fig.width=10,fig.height=8}
+v.out <- data.frame(cbind(Year = 2000:2020, Model = c(rep(c("gamma mod", "poisson mod"), each = length(mall.ipm.gamma$mean$v))), v.mean = c(mall.ipm.gamma$mean$v, mall.ipm.pois$mean$v), v.lower = c(mall.ipm.gamma$q2.5$v, mall.ipm.pois$q2.5$v), v.upper = c(mall.ipm.gamma$q97.5$v, mall.ipm.pois$q97.5$v)))
+
+v.out <- v.out %>% 
+  mutate_at(c('Year','v.mean', 'v.lower', 'v.upper'), as.numeric)
+
+ggplot(v.out, aes(x = Year, y = v.mean, group = Model, fill = Model)) +
+  # add_phylopic(img = agwt.img, color = "black", x = 2019, y = 0.4, ysize = 1) +
+  # add_phylopic(img = mall.img, color = "black", x = 2019, y = 3.5, ysize = 1) +
+  geom_line(aes(color = Model), linewidth = 0.5) +
+  geom_ribbon(aes(ymin = v.lower, ymax = v.upper), alpha = 0.3) +
+  # theme_recruit() +
+  scale_color_manual(values=c("royalblue3", "firebrick3"))+
+  scale_fill_manual(values=c("royalblue3", "firebrick3"))+
+  ylim(0,6) +
+  ylab("Vulnerability")
+
+```
+
+## Breeding population size by model
+```{r, fig.width=12,fig.height=10}
+Bpop <- data.frame(cbind(Year = 2000:2020, Model = c(rep(c("gamma mod", "poisson mod"), each = length(mall.ipm.gamma$mean$N_tot))), mean = c(mall.ipm.gamma$mean$N_tot, mall.ipm.pois$mean$N_tot), lower = c(mall.ipm.gamma$q2.5$N_tot, mall.ipm.pois$q2.5$N_tot), upper = c(mall.ipm.gamma$q97.5$N_tot, mall.ipm.pois$q97.5$N_tot)))
+
+# Bpop <- data.frame(cbind(Year = 2000:2020, mean = c(mall.ipm4$mean$N_tot), lower = c(mall.ipm4$q2.5$N_tot), upper = c(mall.ipm4$q97.5$N_tot)))
+# Bpop <- data.frame(cbind(Year = 2000:2020, mean = c(agwt.ipm2$mean$N_tot), lower = c(agwt.ipm2$q2.5$N_tot), upper = c(agwt.ipm2$q97.5$N_tot)))
+# Bpop estimates (divided by 10,000)
+y_esa <- readRDS(file = "data/MALL_ESA_Bpop.rda") # Eastern survey area
+y_tsa <- readRDS(file = "data/MALL_TSA_Bpop.rda") # Traditional survey area
+# 
+# y_esa <- readRDS(file = "data/AGWT_ESA_Bpop.rda")
+# y_tsa <- readRDS(file = "data/AGWT_TSA_Bpop.rda")
+
+# replace NAs with 0 for y_esa for summing
+y_esa[is.na(y_esa)] <- 0
+
+# Add estimates from both survey areas
+y_tot <- y_esa + y_tsa
+
+# Subset for year 2000-2020 
+y_tot <- y_tot[10:(length(y_tot)-1)]
+
+Bpop <- Bpop %>% 
+  mutate_at(c('mean', 'lower', 'upper'), as.numeric)
+
+y_t <- data.frame(Bpop = y_tot, Year = factor(c(2000:2020)))
+
+ggplot(Bpop, aes(x = Year, y = mean)) +
+  geom_line(aes(group = Model, color = Model)) +
+  # add_phylopic(img = mall.img, color = "black", x = 22, y = 1200, ysize = 150) +
+  # add_phylopic(img = agwt.img, color = "black", x =26, y = 140, ysize = 220) +
+  geom_ribbon(aes(ymin = lower, ymax = upper, group = Model, fill =  Model), alpha = 0.5) +
+  # theme_recruit()+
+  scale_color_manual(values=c("royalblue3", "firebrick3"))+
+  scale_fill_manual(values=c("royalblue3", "firebrick3"))+
+   geom_point(data = y_t, aes(x = Year, y = Bpop)) +
+  ylab("Population index (10,000s)")
+```
+```{r fig.width=10,fig.height=8}
+
+# popSize <- data.frame(cbind(Year = rep(c(2000:2020), 8), 
+#                               Class = rep(rep(c("Juvenile Male", "Juvenile Female", "Adult Male", "Adult Female"), each = length(mall.ipm.gamma$mean$N_HY_mal)), 2), 
+#                               Model = rep(c("gamma mod", "poisson mod"), each = 84 #116
+#                                            ), 
+#                               Mean = c(mall.ipm.gamma$mean$N_HY_mal, mall.ipm.gamma$mean$N_HY_fem, mall.ipm.gamma$mean$N_AHY_mal, mall.ipm.gamma$mean$N_AHY_fem, mall.ipm.pois$mean$N_HY_mal, mall.ipm.pois$mean$N_HY_fem, mall.ipm.pois$mean$N_AHY_mal, mall.ipm.pois$mean$N_AHY_fem), 
+#                               Lower = c(mall.ipm.gamma$q2.5$N_HY_mal, mall.ipm.gamma$q2.5$N_HY_fem, mall.ipm.gamma$q2.5$N_AHY_mal, mall.ipm.gamma$q2.5$N_AHY_fem, mall.ipm.pois$q2.5$N_HY_mal, mall.ipm.pois$q2.5$N_HY_fem, mall.ipm.pois$q2.5$N_AHY_mal, mall.ipm.pois$q2.5$N_AHY_fem), 
+#                               Upper = c(mall.ipm.gamma$q97.5$N_HY_mal, mall.ipm.gamma$q97.5$N_HY_fem, mall.ipm.gamma$q97.5$N_AHY_mal, mall.ipm.gamma$q97.5$N_AHY_fem, mall.ipm.pois$q97.5$N_HY_mal, mall.ipm.pois$q97.5$N_HY_fem, mall.ipm.pois$q97.5$N_AHY_mal, mall.ipm.pois$q97.5$N_AHY_fem)))
+# 
+# popSize<- popSize %>% 
+#                 mutate_at(c("Mean", "Lower", "Upper"), as.numeric)
+
+
+```

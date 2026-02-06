@@ -1,0 +1,6 @@
+"0","#| echo: false
+mall.ipm.gamma <- readRDS('mallard_gamma_mod.rds')
+"
+"2","Warning: cannot open compressed file 'mallard_gamma_mod.rds', probable reason 'No such file or directory'"
+"2","Error in gzfile(file, ""rb"") : cannot open the connection
+"

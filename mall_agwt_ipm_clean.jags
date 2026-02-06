@@ -215,27 +215,23 @@ ponds[21] ~ dnorm(0, 1)
 ################################
 
 # Priors
-  sig.t ~ dgamma(5, 0.25) #agwt ## Changed from dgamma(3.5,0.05) to dgamma(5, 0.25) 11/18/2024
-  # sig.t ~ dgamma(15, 0.1) #mall
-  sig2.t <- pow(sig.t, 2)
-  tau.t <- pow(sig.t, -2)
-  
   # initial population size (tsa = traditional survey area, esa = eastern survey area)
   ##### initial population for MALL
-  #n_HY_fem ~ dnorm(700*0.4*0.45,0.0005)I(0,) #juvenile female
-  #n_HY_mal ~ dnorm(700*0.4*0.55,0.0005)I(0,)  #juvenile male
-  #n_AHY_fem ~  dnorm(700*0.6*0.27,0.0005)I(0,) #adult female
-  #n_AHY_mal ~ dnorm(700*0.6*0.73,0.0005)I(0,) #adult male
+  n_HY_fem ~ dpois(225)  #juvenile female
+  n_HY_mal ~ dpois(225)  #juvenile male
+  n_AHY_fem ~ dpois(225) #adult female
+  n_AHY_mal ~ dpois(225) #adult male
+  
   ##### initial population for AGWT
-  n_HY_fem ~ dnorm(50, 0.0016)I(0,) #juvenile female
-  n_HY_mal ~  dnorm(50, 0.0016)I(0,) #juvenile male
-  n_AHY_fem ~ dnorm(50, 0.0016)I(0,) #adult female
-  n_AHY_mal ~ dnorm(50, 0.0016)I(0,) #adult male
+  # n_HY_fem ~ dpois(65) #juvenile female
+  # n_HY_mal ~  dpois(65) #juvenile male
+  # n_AHY_fem ~ dpois(65) #adult female
+  # n_AHY_mal ~ dpois(65) #adult male
 
-  N_HY_fem[1] <- round(n_HY_fem)
-  N_AHY_fem[1] <- round(n_AHY_fem)
-  N_HY_mal[1] <- round(n_HY_mal)
-  N_AHY_mal[1] <- round(n_AHY_mal)
+  N_HY_fem[1] <- n_HY_fem
+  N_AHY_fem[1] <- n_AHY_fem
+  N_HY_mal[1] <- n_HY_mal
+  N_AHY_mal[1] <- n_AHY_mal
 
   # Likelihood
   # state process
@@ -262,7 +258,7 @@ ponds[21] ~ dnorm(0, 1)
 
   # Observation process
   for(t in 1:nyrs){ 
-  y_t[t] ~ dnorm(N_tot[t], tau.t)
+  y_t[t] ~ dpois(N_tot[t]) 
   }
 
   } # end model

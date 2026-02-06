@@ -10,10 +10,6 @@ new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"
 if(length(new.packages)){install.packages(new.packages)}
 lapply(list.of.packages, require, character.only = TRUE)
 
-# Load model output (if needed)
-mall.ipm <-readRDS("mall_ipm_2005-2020_output.rda")
-agwt.ipm <- readRDS("agwt_ipm_1992_2020_output.rda")
-
 
 ###################################################
 ####### contribution to variance of lambda  #######
@@ -193,7 +189,7 @@ theme(strip.text = element_text(size = 9)) +
   facet_wrap(~Species)
 
 
-ggsave("figures/contribution_plot_new_both.jpg", units="cm", width=9, height=7, dpi=600)
+ggsave("figures/contribution_plot_both.jpg", units="cm", width=9, height=7, dpi=600)
 
 
 #########################################################################

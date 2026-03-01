@@ -208,7 +208,7 @@ band <- band[band$B.Month %in% c(2:3, 7:9), ]
 # Subset data from Atlantic and Mississippi flyways, and corresponding provinces in CA
 
 band <- band %>% 
-  filter(B.Flyway %in% c(1:3) | Region..State %in% c("Quebec", "Nova Scotia", "New Brunswick", "Newfoundland and Labrador and St. Pierre et Miquelon", "Ontario", "Manitoba", "Prince Edward Island", "Saskatchewan", "Alberta", "Nunavut", "Northwest Territories"))
+  filter(B.Flyway %in% c(1:3) | Region..State %in% c("Alberta", "Manitoba", "New Brunswick", "Newfoundland and Labrador and St. Pierre et Miquelon", "Nova Scotia", "Northwest Territories", "Nunavut", "Ontario", "Prince Edward Island", "Quebec", "Saskatchewan"))
 
 # Get rid of unknown age at banding
 band <- band[band$Age..VAGE != "Unknown", ]
@@ -438,7 +438,7 @@ for (s in 1:nSeason){
 #################################
 # import raw wing data
 mall.wings <- read.csv("raw_dat/PCS_MALL_1991_2020.csv")
-agwt.wings <- read.csv("raw_dat/PCS_AGWT_1991_2020.csv")
+# agwt.wings <- read.csv("raw_dat/PCS_AGWT_1991_2020.csv")
 wings.can <- read.csv('raw_dat/n_parts_by_zone_year_aou_sex_age1976-2024.csv')
 
 # filter Canada data to years 1991-2020
@@ -448,7 +448,7 @@ wings.can <- wings.can %>%
 
 # Remove unknown age or sex
 mall.wings <- mall.wings[!(mall.wings$age_code == 0 | mall.wings$sex_code == 0),] 
-agwt.wings <- agwt.wings[!(agwt.wings$age_code == 0 | agwt.wings$sex_code == 0), ]
+# agwt.wings <- agwt.wings[!(agwt.wings$age_code == 0 | agwt.wings$sex_code == 0), ]
 wings.can <- wings.can %>% 
   select(!contains(c('NA', '.U', 'U.')))
 
@@ -457,13 +457,13 @@ wings.can <- wings.can %>%
 states.rm <- c("AK", "CA", "OR", "WA", "UT", "ID", "NV", "AZ")
 mall.wings$state <- trimws(mall.wings$state) # get rid of extra space at the end of states
 mall.wings <- mall.wings[!(mall.wings$state %in% states.rm),]
-agwt.wings$state <- trimws(agwt.wings$state) # get rid of extra space at the end of states
-agwt.wings <- agwt.wings[!(agwt.wings$state %in% states.rm), ]
+# agwt.wings$state <- trimws(agwt.wings$state) # get rid of extra space at the end of states
+# agwt.wings <- agwt.wings[!(agwt.wings$state %in% states.rm), ]
 
 # For Canada wings, exclude provinces outside of the Atlantic, Mississippi
 # and Central flyways
 
-pr.rm <- c('AB', 'YT', '')
+pr.rm <- c('BC', 'YT', '')
   
 wings.can <- 
   wings.can %>% 
@@ -472,8 +472,8 @@ wings.can <-
 # filter to mallard and agwt wings from Canada data
 mall.wings.can <- wings.can %>% 
   filter(AOU == 1320)
-agwt.wings.can <- wings.can %>% 
-  filter(AOU == 1390)
+# agwt.wings.can <- wings.can %>% 
+#   filter(AOU == 1390)
 
 mall.wings.can <- 
   mall.wings.can %>% 
@@ -485,15 +485,15 @@ mall.wings.can <-
                             .default = NA)) %>% 
   rename(Season = YEAR)
 
-agwt.wings.can <- 
-  agwt.wings.can %>% 
-  pivot_longer(`A.F`:`I.M`, names_to = 'cohort', values_to = 'Number') %>% 
-  mutate(cohort = case_when(cohort == 'A.F' ~ 'Adult Female',
-                            cohort == 'A.M' ~ 'Adult Male',
-                            cohort == 'I.F' ~ 'Immature Female',
-                            cohort == 'I.M' ~ 'Immature Male', 
-                            .default = NA)) %>% 
-  rename(Season = YEAR)
+# agwt.wings.can <- 
+#   agwt.wings.can %>% 
+#   pivot_longer(`A.F`:`I.M`, names_to = 'cohort', values_to = 'Number') %>% 
+#   mutate(cohort = case_when(cohort == 'A.F' ~ 'Adult Female',
+#                             cohort == 'A.M' ~ 'Adult Male',
+#                             cohort == 'I.F' ~ 'Immature Female',
+#                             cohort == 'I.M' ~ 'Immature Male', 
+#                             .default = NA)) %>% 
+#   rename(Season = YEAR)
 
 # Summarize wings by cohort
 
@@ -503,17 +503,17 @@ mall.cohort.table <- mall.wings %>%
   summarize(Number = n()) %>% 
   ungroup()
 
-agwt.cohort.table <- agwt.wings %>%
-  group_by(cohort, Season) %>%
-  summarize(Number = n()) %>% 
-  ungroup()
+# agwt.cohort.table <- agwt.wings %>%
+#   group_by(cohort, Season) %>%
+#   summarize(Number = n()) %>% 
+#   ungroup()
 
 # Canada wings
 mall.wings.can <- mall.wings.can %>% 
   summarise(Number = sum(Number), .by = c(cohort, Season))
 
-agwt.wings.can <- agwt.wings.can %>% 
-  summarise(Number = sum(Number), .by = c(cohort, Season))
+# agwt.wings.can <- agwt.wings.can %>% 
+#   summarise(Number = sum(Number), .by = c(cohort, Season))
 
 # Combine US and Canada
 mall.wings.combined <- 
@@ -521,18 +521,15 @@ mall.wings.combined <-
   bind_rows(mall.wings.can) %>% 
   summarise(Number = sum(Number), .by = c('Season', 'cohort'))
 
-agwt.wings.combined <- 
-  agwt.cohort.table %>% 
-  bind_rows(agwt.wings.can) %>% 
-  summarise(Number = sum(Number), .by = c('Season', 'cohort'))
+# agwt.wings.combined <- 
+#   agwt.cohort.table %>% 
+#   bind_rows(agwt.wings.can) %>% 
+#   summarise(Number = sum(Number), .by = c('Season', 'cohort'))
 
-# jm.wing <- cohort_table[cohort_table$cohort == "Immature Male", ]
-# am.wing <- cohort_table[cohort_table$cohort == "Adult Male", ]
 mall.jf.wing <- mall.wings.combined[mall.wings.combined$cohort == "Immature Female", ]
-# af.wing <- cohort_table[cohort_table$cohort == "Adult Female", ]
-agwt.jf.wing <- agwt.wings.combined[agwt.wings.combined$cohort == "Immature Female", ]
+# agwt.jf.wing <- agwt.wings.combined[agwt.wings.combined$cohort == "Immature Female", ]
 
-# male.wing <- cohort_table %>%
+# male.wing <- mall.wings.combined %>%
 #   filter(cohort %in% c("Immature Male", "Adult Male")) %>%
 #   group_by(Season) %>%
 #   summarise(sum = sum(Number))
@@ -542,23 +539,23 @@ mall.female.wing <- mall.wings.combined %>%
   group_by(Season) %>%
   summarise(sum = sum(Number))
 
-agwt.female.wing <- agwt.wings.combined %>%
-  filter(cohort %in% c("Immature Female", "Adult Female")) %>%
-  group_by(Season) %>%
-  summarise(sum = sum(Number))
+# agwt.female.wing <- agwt.wings.combined %>%
+#   filter(cohort %in% c("Immature Female", "Adult Female")) %>%
+#   group_by(Season) %>%
+#   summarise(sum = sum(Number))
 
 saveRDS(mall.jf.wing, file = "data/MALL_juv_female_wing_combined.rda")
 saveRDS(mall.female.wing, file = "data/MALL_all_female_wing_combined.rda")
 
-saveRDS(agwt.jf.wing, file = "data/AGWT_juv_female_wing_combined.rda")
-saveRDS(agwt.female.wing, file = "data/AGWT_all_female_wing_combined.rda")
+# saveRDS(agwt.jf.wing, file = "data/AGWT_juv_female_wing_combined.rda")
+# saveRDS(agwt.female.wing, file = "data/AGWT_all_female_wing_combined.rda")
 # plot cohorts
 
-ggplot(mall.wings.combined, aes(x = cohort, y = Number)) +
-  geom_col() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 0.5),
-        plot.title = element_text(hjust = 0.5)) +
-  ggtitle("Number wings by cohort")
+# ggplot(mall.wings.combined, aes(x = cohort, y = Number)) +
+#   geom_col() +
+#   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 0.5),
+#         plot.title = element_text(hjust = 0.5)) +
+#   ggtitle("Number wings by cohort")
 
 ################################
 ###### Bpop survey #############

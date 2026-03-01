@@ -3,24 +3,24 @@
     "path": "~/GitHub/mall_agwt_ipm/03_mall_agwt_IPM_run_script.R",
     "project_path": "03_mall_agwt_IPM_run_script.R",
     "type": "r_source",
-    "hash": "1172928159",
+    "hash": "0",
     "contents": "",
     "dirty": false,
     "created": 1767496943041.0,
     "source_on_save": false,
-    "relative_order": 3,
+    "relative_order": 2,
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "170,37",
-        "scrollLine": "163"
+        "cursorPosition": "37,71",
+        "scrollLine": "23"
     },
     "folds": "",
-    "lastKnownWriteTime": 1770340765,
+    "lastKnownWriteTime": 1772400338,
     "encoding": "ISO8859-1",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1770340765230,
+    "last_content_update": 1772400338475,
     "read_only": false,
     "read_only_alternatives": []
 }

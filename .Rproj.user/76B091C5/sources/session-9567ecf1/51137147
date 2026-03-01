@@ -3,24 +3,24 @@
     "path": "~/GitHub/mall_agwt_ipm/mall_agwt_ipm_clean.jags",
     "project_path": "mall_agwt_ipm_clean.jags",
     "type": "text",
-    "hash": "0",
+    "hash": "3801184776",
     "contents": "",
     "dirty": false,
     "created": 1727555190950.0,
     "source_on_save": false,
-    "relative_order": 2,
+    "relative_order": 4,
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "2,33",
-        "scrollLine": "0"
+        "cursorPosition": "228,3",
+        "scrollLine": "208"
     },
     "folds": "",
-    "lastKnownWriteTime": 1770340945,
+    "lastKnownWriteTime": 1772400048,
     "encoding": "ISO8859-1",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1770340945975,
+    "last_content_update": 1772400048779,
     "read_only": false,
     "read_only_alternatives": []
 }

@@ -163,10 +163,8 @@ na <- 1000
 mall.ipm <- jagsUI(bugs.data, inits=inits, parameters, "mall_agwt_ipm_clean.jags", n.adapt = na, n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, parallel=TRUE, store.data=TRUE)
 mall.ipm.2 <- update(mall.ipm, n.iter = 250000)
 
-
 ## AGWT 
 agwt.ipm <- jagsUI(bugs.data, inits=inits, parameters, "mall_agwt_ipm_clean.jags", n.adapt = na, n.chains = nc, n.thin = nt, n.iter = ni, n.burnin = nb, parallel=TRUE, store.data=TRUE)
-
 
 #------Plotting model results--------
 
@@ -194,19 +192,12 @@ theme_ipm <- function(){ theme(
   )
 }
 
-# # Grab phylopic
-# mall.id <- get_uuid(name = "Anas platyrhynchos", n = 1)
-# mall.img <- pick_phylopic(name = "Anas platyrhynchos", n = 1)
-# agwt.id <- get_uuid(name = "Anas crecca", n = 4)
-# agwt.img <- pick_phylopic(name = "Anas crecca", n = 4)
-
 sp.col <- c("Dark green", "Chocolate4")
 season.col <- c("royalblue3", "firebrick3")
 classes <- c("Juvenile Male", "Juvenile Female", "Adult Male", "Adult Female")
 seasons <- c("Fall/Winter", "Spring/Summer")
 species <- c("Mallard", 'Green-winged Teal')
-mall.img <- 'figures/mallard.png'
-agwt.img <- 'figures/agwt.png'
+
 
 # ----- Plotting seasonal survival
 # Data frame with both hunting and post-hunting survival
@@ -225,7 +216,6 @@ mall.h.ph <- mall.h.ph %>%
 ggplot(mall.h.ph, aes(x = Year, y = Mean, group = Season)) +
   geom_pointrange(aes(ymin = Lower, ymax = Upper, color = Season), size = 0.2, alpha = 0.75, position=position_dodge(width=0.35)) +
   theme_ipm() +
-  labs(title = "<img src = 'figures/mallard.png' height = 35>") +
   theme(plot.title = ggtext::element_markdown(hjust = -0.025)) +
   scale_color_manual(values=c(season.col))+ 
   ylab("Survival probability") +
@@ -250,7 +240,6 @@ agwt.h.ph <- agwt.h.ph %>%
 ggplot(agwt.h.ph, aes(x = Year, y = Mean, group = Season)) +
   geom_pointrange(aes(ymin = Lower, ymax = Upper, color = Season), size = 0.2, alpha = 0.75, position=position_dodge(width=0.35)) +
   theme_ipm() +
-  labs(title = "<img src = 'figures/agwt.png' height = 35>") +
   theme(plot.title = ggtext::element_markdown(hjust = 0.025)) +
   scale_color_manual(values=c(season.col))+ 
   ylab("Survival probability") +
@@ -277,7 +266,6 @@ S.a.mall.out <- S.a.mall.out %>%
   geom_pointrange(aes(ymin = Lower, ymax = Upper, color = Class),size = 0.01, alpha = 0.75) +
   theme_ipm() +
   theme(legend.position = "none") +
-  labs(title = "<img src = 'figures/mallard.png' height = 35>") +
   theme(plot.title = ggtext::element_markdown(hjust = -0.025)) +
   ylab("Annual survival") +
   ylim(0,1) +
@@ -298,7 +286,7 @@ S.a.agwt.out <- S.a.agwt.out %>%
   geom_pointrange(aes(ymin = S_a.lower, ymax = S_a.upper, color = Class),size = 0.01,alpha = 0.75,position=position_dodge(width=0.35)) +
   theme_ipm() +
   theme(legend.position = "none") +
-  labs(title = "<img src = 'figures/agwt.png' height = 35>") +
+  # labs(title = "<img src = 'figures/agwt.png' height = 35>") +
   theme(plot.title = ggtext::element_markdown(hjust = -0.025)) +
   ylab("Annual survival") +
   ylim(0,1) +
@@ -379,8 +367,6 @@ R.out <- R.out %>%
   geom_ribbon(aes(ymin = R.lower, ymax = R.upper,group = Species, fill = Species), alpha = 0.3) +
   theme_recruit() +
   theme(legend.position.inside = c(0.2,0.9)) +
-  # geom_image(data = tibble(Year = 2019, R.mean = 3.5), aes(image = mall.img), size = 0.25) +
-  #   geom_image(data = tibble(Year = 2019, R.mean = 0.5), aes(image = agwt.img), size = 0.25) +
   scale_color_manual(values = sp.col) +
   scale_fill_manual(values = sp.col) +
   scale_x_continuous(labels = 2000:2020, breaks = seq(2000, 2020, 1)) +
@@ -397,8 +383,6 @@ v.out <- v.out %>%
   mutate_at(c('Year','v.mean', 'v.lower', 'v.upper'), as.numeric)
 
 ggplot(v.out, aes(x = Year, y = v.mean, group = Species, fill = Species)) +
-  # add_phylopic(img = agwt.img, color = "black", x = 2019, y = 0.4, ysize = 1) +
-  # add_phylopic(img = mall.img, color = "black", x = 2019, y = 3.5, ysize = 1) +
   geom_line(aes(color = Species), linewidth = 0.5) +
   geom_ribbon(aes(ymin = v.lower, ymax = v.upper), alpha = 0.3) +
   theme_recruit() +
@@ -420,8 +404,6 @@ Bpop.both <- Bpop.both %>%
 
 ggplot(Bpop.both, aes(x = Year, y = mean, group = Species)) +
   geom_line(aes(color = Species), linewidth = 0.5) +
-  # add_phylopic(img = mall.img, color = "black", x = 22, y = 1200, ysize = 150) +
-  # add_phylopic(img = agwt.img, color = "black", x =26, y = 140, ysize = 220) +
   geom_ribbon(aes(ymin = lower, ymax = upper, fill = Species), alpha = 0.5) +
   theme_recruit()+
   theme(legend.position.inside = c(0.2, 0.9)) +
@@ -438,15 +420,10 @@ mall.Bpop.out <- mall.Bpop.out %>%
                     mutate_at(c("Bpop.mean", "Bpop.lower", "Bpop.upper"), as.numeric)
 
 mall.Bpop.plot <- ggplot(mall.Bpop.out, aes(x = Year, y = Bpop.mean, group = Class)) +
-  #add_phylopic(img = agwt.img, color = "black", x = 5.5, y = 500, ysize = 100) +
   geom_line(aes(color = Class)) +
   geom_ribbon(aes(ymin = Bpop.lower, ymax = Bpop.upper, fill = Class ), alpha = 0.5) +
   theme(axis.text.x = element_text(angle = 45)) +
   ggtitle('Mallard population by size-class')
-
-ggplot(sig_t, aes(x = prior, y = sig_t)) +
-  stat_halfeye(position = "dodge") +
-  ylab('sig.t posterior')
 
 
 agwt.Bpop.out <- data.frame(cbind(Class = rep(c("Juvenile Male", "Juvenile Female", "Adult Male", "Adult Female"), each = length(agwt.ipm$mean$N_AHY_fem)), Year = rep(2000:2020, 4), Bpop.mean = c(agwt.ipm$mean$N_HY_mal, agwt.ipm$mean$N_HY_fem, agwt.ipm$mean$N_AHY_mal, agwt.ipm$mean$N_AHY_fem), Bpop.lower = c(agwt.ipm$q2.5$N_HY_mal, agwt.ipm$q2.5$N_HY_fem, agwt.ipm$q2.5$N_AHY_mal, agwt.ipm$q2.5$N_AHY_fem), Bpop.upper = c(agwt.ipm$q97.5$N_HY_mal, agwt.ipm$q97.5$N_HY_fem, agwt.ipm$q97.5$N_AHY_mal, agwt.ipm$q97.5$N_AHY_fem)))
@@ -455,7 +432,6 @@ agwt.Bpop.out <- agwt.Bpop.out %>%
   mutate_at(c("Bpop.mean", "Bpop.lower", "Bpop.upper"), as.numeric)
 
 agwt.Bpop.plot <- ggplot(agwt.Bpop.out, aes(x = Year, y = Bpop.mean, group = Class)) +
-  #add_phylopic(img = agwt.img, color = "black", x = 5.5, y = 500, ysize = 100) +
   geom_line(aes(color = Class)) +
   geom_ribbon(aes(ymin = Bpop.lower, ymax = Bpop.upper, fill = Class ), alpha = 0.5) +
   theme(axis.text.x = element_text(angle = 45)) +
@@ -500,13 +476,10 @@ alpha.all <- bind_rows(alpha.prcp, alpha.dx32) %>%
   geom_vline(xintercept = 0, linetype="dashed", color = "black", linewidth=0.3) +
   scale_fill_manual(values=cbbPalette) +
   annotate("text", x=-1.5, y=2.5, label= "(a)") +
-  geom_image(aes(image = mall.img), data = tibble(Covariate_effect = -1.4, Covariate = 2.4), size = 0.2) +
   ylab("Environmental Covariate") +
   xlab("Covariate effect estimate") +
-  ggtitle("Fall-Winter Survival") +
+  ggtitle("Mallard \n Fall-Winter Survival") +
   xlim(-1.7, 1.7)) 
-
-ggsave("figures/mall_cov_effects_fall_winter_surv.jpg", units="cm", width=10, height=7, dpi=600)
 
 # covariate effects on spring/summer survival plot
 
@@ -529,7 +502,7 @@ gamma.all <- bind_rows(gamma.prcp, gamma.dx32) %>%
   geom_vline(xintercept = 0, linetype="dashed", color = "black", linewidth=0.3) +
   scale_fill_manual(values=cbbPalette) +
   annotate("text", x=-1.6, y=2.5, label= "(b)") +
-  ggtitle("Spring-Summer Survival") +
+  ggtitle("Mallard \n Spring-Summer Survival") +
   xlim(-1.8, 1.8) +
   ylab("Environmental Covariate") +
   xlab("Covariate effect estimate"))
@@ -544,9 +517,6 @@ mall.beta.prcp <- mall.ipm$sims.list$beta_prcp %>%
 
 mall.beta.dx32 <-  mall.ipm$sims.list$beta_dx32 %>%
   as.data.frame()
-
-# mall.beta.nao <-  mall.ipm$sims.list$beta_nao %>%
-#   as.data.frame()
 
 mall.beta.pond <-  mall.ipm$sims.list$beta_pond %>%
   as.data.frame()
@@ -568,15 +538,11 @@ mall.beta.all <- bind_rows(mall.beta.prcp, mall.beta.dx32, mall.beta.pond) %>%
   labs(x = "Covariate effect estimate", y = "Environmetnal covariate") +
   ggtitle("Mallard"))
 
-# combine all plots
-# (alpha.plot + gamma.plot)/mall.beta.plot +  plot_layout(guides = "collect", widths = 1.5, heights = unit(c(6, 3), 'cm')) & theme(legend.position = 'bottom')
-
-ggsave("figures/cov_effect_prod_mall_new_2005_2020.jpg",  units="cm", width=12, height=12, dpi=600)
+# ggsave("figures/cov_effect_prod_mall_2000_2020.jpg",  units="cm", width=12, height=12, dpi=600)
 
 # ------- Calculating proportion of posterior distribution greater than 0
 mall.alpha.prcp <- mall.ipm$sims.list$alpha_prcp
 mall.alpha.dx32 <- mall.ipm$sims.list$alpha_dx32
-mall.alpha.nao <- mall.ipm$sims.list$alpha_nao
 mall.gamma.prcp <- mall.ipm$sims.list$gamma_prcp
 mall.gamma.dx32 <- mall.ipm$sims.list$gamma_dx32
 mall.beta.prcp <- mall.ipm$sims.list$beta_prcp
@@ -614,10 +580,9 @@ agwt.alpha.all <- bind_rows(agwt.alpha.prcp, agwt.alpha.dx32) %>%
   stat_halfeye(aes(fill = Class), interval_size_range = c(0.25, 0.45), position = "dodge")+
   theme_cov() +
   geom_vline(xintercept = 0, linetype="dashed", color = "black", linewidth=0.3) +
-  geom_image(aes(image = agwt.img), data = tibble(Covariate_effect = -1.8, Covariate = 2.2), size = 0.15) +
   scale_fill_manual(values=cbbPalette) +
   annotate("text", x=-1.8, y=2.5, label= "(a)") +
-  ggtitle("Fall-Winter Survival") +
+  ggtitle("Green-winged Teal \n Fall-Winter Survival") +
   labs(x = "Covariate effect estimate", y = "Environmetnal covariate") +
   xlim(-2, 2))
 
@@ -642,7 +607,7 @@ agwt.gamma.all <- bind_rows(agwt.gamma.prcp, agwt.gamma.dx32) %>%
   geom_vline(xintercept = 0, linetype="dashed", color = "black", linewidth=0.3) +
   scale_fill_manual(values=cbbPalette) +
  annotate("text", x = -1.8, y = 2.5, label = "(b)") +
-  ggtitle("Spring-Summer Survival") +
+  ggtitle("Green-winged Teal \n Spring-Summer Survival") +
   labs(x = "Covariate effect estimate", y = "Environmetnal covariate") +
   xlim(-2, 2))
 
@@ -669,10 +634,10 @@ agwt.beta.all <- bind_rows(agwt.beta.prcp, agwt.beta.dx32, agwt.beta.pond) %>%
   stat_halfeye(fill = "dodgerblue2", interval_size_range = c(0.25, 0.45)) +
   theme_cov() +
   geom_vline(xintercept = 0, linetype = "dashed", color = "black", linewidth = 0.3) +
-  xlim(-0.3, 0.3) +
-  annotate("text", x = -0.28, y = 3.75, label= "(b)") +
+  xlim(-0.4, 0.4) +
+  annotate("text", x = -0.37, y = 3.75, label= "(b)") +
   labs(x = "Covariate effect estimate", y = "Environmetnal covariate") +
-  ggtitle("Green-winged teal"))
+  ggtitle("Green-winged Teal"))
 
 mall.beta.plot + agwt.beta.plot + plot_layout(guides = "collect")
 
